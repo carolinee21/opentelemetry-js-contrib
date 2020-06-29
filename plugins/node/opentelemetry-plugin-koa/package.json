@@ -5,7 +5,18 @@
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "repository": "open-telemetry/opentelemetry-js",
-  "scripts": {},
+  "scripts": {
+    "test": "nyc ts-mocha -p tsconfig.json 'test/**/*.ts'",
+    "codecov": "nyc report --reporter=json && codecov -f coverage/*.json -p ../../",
+    "tdd": "yarn test -- --watch-extensions ts --watch",
+    "clean": "rimraf build/*",
+    "lint": "gts check",
+    "lint:fix": "gts fix",
+    "precompile": "tsc --version",
+    "version:update": "node ../../../scripts/version-update.js",
+    "compile": "npm run version:update && tsc -p .",
+    "prepare": "npm run compile"
+  },
   "keywords": [
     "opentelemetry",
     "koa",

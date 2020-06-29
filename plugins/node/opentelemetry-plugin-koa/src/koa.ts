@@ -17,21 +17,83 @@
 import { BasePlugin } from '@opentelemetry/core';
 // import { Attributes } from '@opentelemetry/api';
 import * as koa from 'koa';
-// import * as shimmer from 'shimmer';
+import * as shimmer from 'shimmer';
 import { VERSION } from './version';
 
 
 /** Koa instrumentation plugin for OpenTelemetry */
 export class KoaPlugin extends BasePlugin<typeof koa> {
+  static readonly component = 'koa';
 
     constructor(readonly moduleName: string) {
         super('@opentelemetry/plugin-koa', VERSION);
+        console.log('constructing');
     }
 
     protected patch(): typeof koa {
-        throw new Error("Method not implemented.");
+        console.log('PATCHING!!');
+        if (this._moduleExports === undefined || this._moduleExports === null) {
+            console.log("undefiiiiined");
+            return this._moduleExports;
+        }
+        // var appProto = (this._moduleExports as unknown) as koa;// as Application<koa.DefaultState, koa.DefaultContext>;
+        var appProto = this._moduleExports.prototype;
+        console.log('appProto type: ' + (typeof appProto));
+        shimmer.wrap(
+            appProto,
+            'use',
+            this._getAppUsePatch.bind(this)
+          );
+
+          return this._moduleExports;
+
     }
     protected unpatch(): void {
-        throw new Error("Method not implemented.");
+        // const appProto = (this._moduleExports as unknown) as koa;// as Application<koa.DefaultState, koa.DefaultContext>;
+        var appProto = this._moduleExports.prototype;
+        shimmer.unwrap(appProto, 'use');
     }
+
+    /**
+   * Get the patch for Application.use function
+   * @param original
+   */
+  private _getAppUsePatch(
+    original: any
+  ) {
+    const plugin = this;
+    
+    return function use(
+        this : {},
+        ...args: Parameters<typeof original>
+      ) {
+        const currentSpan = plugin._tracer.getCurrentSpan();
+        if (!currentSpan) {
+            console.log('no curr span');
+        } else {
+            currentSpan.addEvent('CURR SPAN EVENT');
+            console.log('tried adding to current span');
+        }
+
+        args
+
+        // AQUIII
+        var span = plugin._tracer.startSpan('App.use! testing');
+        span.setAttribute('key', 'value');
+        console.log("Starting request!");
+        span.addEvent('NEW SPAN EVENT');
+        const route = original.apply(this, args);
+
+
+        span.end();
+
+        console.log("doneeee!");
+
+        return route;
+        // tslint:disable-next-line:no-any
+      } as any;
+    
+  }
 }
+
+export const plugin = new KoaPlugin(KoaPlugin.component);

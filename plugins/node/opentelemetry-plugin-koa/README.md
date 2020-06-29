@@ -1,7 +1,7 @@
 # OpenTelemetry Koa Instrumentation for Node.js
 [![Gitter chat][gitter-image]][gitter-url]
-[![dependencies][dependencies-image]][dependencies-url]
-[![devDependencies][devDependencies-image]][devDependencies-url]
+<!-- [![dependencies][dependencies-image]][dependencies-url]
+[![devDependencies][devDependencies-image]][devDependencies-url] -->
 [![Apache License][license-image]][license-image]
 
 This module provides automatic instrumentation for [`Koa`](https://github.com/koajs/koa).
