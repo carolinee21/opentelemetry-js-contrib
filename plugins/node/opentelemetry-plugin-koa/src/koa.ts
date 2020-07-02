@@ -15,9 +15,9 @@
  */
 
 import { BasePlugin } from '@opentelemetry/core';
-// import { Attributes } from '@opentelemetry/api';
 import * as koa from 'koa';
 import * as shimmer from 'shimmer';
+import { Parameters, KoaMiddleware, KoaContext, AttributeNames } from './types';
 import { VERSION } from './version';
 
 
@@ -27,29 +27,23 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
 
     constructor(readonly moduleName: string) {
         super('@opentelemetry/plugin-koa', VERSION);
-        console.log('constructing');
     }
 
     protected patch(): typeof koa {
-        console.log('PATCHING!!');
         if (this._moduleExports === undefined || this._moduleExports === null) {
-            console.log("undefiiiiined");
             return this._moduleExports;
         }
-        // var appProto = (this._moduleExports as unknown) as koa;// as Application<koa.DefaultState, koa.DefaultContext>;
         var appProto = this._moduleExports.prototype;
-        console.log('appProto type: ' + (typeof appProto));
         shimmer.wrap(
             appProto,
             'use',
             this._getAppUsePatch.bind(this)
-          );
+        );
 
-          return this._moduleExports;
+        return this._moduleExports;
 
     }
     protected unpatch(): void {
-        // const appProto = (this._moduleExports as unknown) as koa;// as Application<koa.DefaultState, koa.DefaultContext>;
         var appProto = this._moduleExports.prototype;
         shimmer.unwrap(appProto, 'use');
     }
@@ -58,41 +52,53 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
    * Get the patch for Application.use function
    * @param original
    */
-  private _getAppUsePatch(
-    original: any
-  ) {
+  private _getAppUsePatch( original: Function )
+    {
     const plugin = this;
-    
+
     return function use(
-        this : {},
+        this : koa,
+        middlewareFunction : KoaMiddleware,
         ...args: Parameters<typeof original>
       ) {
-        const currentSpan = plugin._tracer.getCurrentSpan();
-        if (!currentSpan) {
-            console.log('no curr span');
-        } else {
-            currentSpan.addEvent('CURR SPAN EVENT');
-            console.log('tried adding to current span');
-        }
 
-        args
+        var span = plugin._tracer.startSpan('app.use');
 
-        // AQUIII
-        var span = plugin._tracer.startSpan('App.use! testing');
-        span.setAttribute('key', 'value');
-        console.log("Starting request!");
-        span.addEvent('NEW SPAN EVENT');
-        const route = original.apply(this, args);
-
+        var oldMiddleware = middlewareFunction;
+        var patchedFunction = plugin._patchLayer(oldMiddleware);
+        const route = original.apply(this, [patchedFunction]);
+        // var lastLayer = route.middleware[route.middleware.length - 1];
 
         span.end();
-
-        console.log("doneeee!");
 
         return route;
         // tslint:disable-next-line:no-any
       } as any;
     
+  }
+
+  private _patchLayer (oldMiddleware: KoaMiddleware) {
+    const patchedLayer = (context: KoaContext, next: koa.Next) => {
+        const currentSpan = this._tracer.getCurrentSpan();
+        if (!currentSpan) {
+            console.log('--- No current span');
+        } 
+
+        var mwSpan = this._tracer.startSpan('middleware');
+
+        mwSpan.setAttribute(AttributeNames.COMPONENT, KoaPlugin.component);
+        mwSpan.setAttribute(AttributeNames.PATH, context.path);
+        mwSpan.setAttribute(AttributeNames.PROTOCOL, context.protocol);
+        mwSpan.setAttribute(AttributeNames.STATUS, context.status);
+        mwSpan.setAttribute(AttributeNames.HOST, context.host);
+        mwSpan.setAttribute(AttributeNames.METHOD, context.method);
+        mwSpan.setAttribute(AttributeNames.KOA_TYPE, 'middleware');
+        
+        oldMiddleware(context, next);
+        mwSpan.end();
+
+    }
+    return patchedLayer;
   }
 }
 
