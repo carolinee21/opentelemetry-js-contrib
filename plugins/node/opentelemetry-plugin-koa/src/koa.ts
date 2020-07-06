@@ -17,13 +17,14 @@
 import { BasePlugin } from '@opentelemetry/core';
 import * as koa from 'koa';
 import * as shimmer from 'shimmer';
-import { Parameters, KoaMiddleware, KoaContext, AttributeNames } from './types';
+import { Parameters, KoaMiddleware, KoaContext, KoaComponentName } from './types';
 import { VERSION } from './version';
+import { getMiddlewareMetadata } from './utils';
 
 
 /** Koa instrumentation plugin for OpenTelemetry */
 export class KoaPlugin extends BasePlugin<typeof koa> {
-  static readonly component = 'koa';
+  static readonly component = KoaComponentName;
 
     constructor(readonly moduleName: string) {
         super('@opentelemetry/plugin-koa', VERSION);
@@ -75,24 +76,20 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
   }
 
   private _patchLayer (middlewareLayer: KoaMiddleware) {
+    const plugin = this;
     const patchedLayer = (context: KoaContext, next: koa.Next) => {
         const currentSpan = this._tracer.getCurrentSpan();
         if (!currentSpan) {
             console.log('--- No current span');
         } 
 
-        var mwSpan = this._tracer.startSpan('middleware');
+        const metadata = getMiddlewareMetadata(context);
+        const span = plugin._tracer.startSpan(metadata.name, {
+          attributes: metadata.attributes,
+        });
 
-        mwSpan.setAttribute(AttributeNames.COMPONENT, KoaPlugin.component);
-        mwSpan.setAttribute(AttributeNames.PATH, context.path);
-        mwSpan.setAttribute(AttributeNames.PROTOCOL, context.protocol);
-        mwSpan.setAttribute(AttributeNames.STATUS, context.status);
-        mwSpan.setAttribute(AttributeNames.HOST, context.host);
-        mwSpan.setAttribute(AttributeNames.METHOD, context.method);
-        mwSpan.setAttribute(AttributeNames.KOA_TYPE, 'middleware');
-        
         var result = middlewareLayer(context, next);
-        mwSpan.end();
+        span.end();
         return result;
 
     }

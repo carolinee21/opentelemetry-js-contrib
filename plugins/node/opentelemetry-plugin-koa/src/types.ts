@@ -31,5 +31,7 @@ export enum AttributeNames {
     METHOD = 'http.method',
     KOA_TYPE = 'koa.type',
     KOA_NAME = 'koa.name'
-}
+};
+
+export const KoaComponentName : string = 'koa';
 
