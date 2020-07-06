@@ -49,7 +49,8 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
     }
 
     /**
-   * Get the patch for Application.use function
+   * Patches the Application.use function in order to instrument each original
+   * middleware layer which is introduced
    * @param original
    */
   private _getAppUsePatch( original: Function )
@@ -62,14 +63,10 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
         ...args: Parameters<typeof original>
       ) {
 
-        var span = plugin._tracer.startSpan('app.use');
-
         var oldMiddleware = middlewareFunction;
         var patchedFunction = plugin._patchLayer(oldMiddleware);
         const route = original.apply(this, [patchedFunction]);
         // var lastLayer = route.middleware[route.middleware.length - 1];
-
-        span.end();
 
         return route;
         // tslint:disable-next-line:no-any
