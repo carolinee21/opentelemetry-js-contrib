@@ -77,7 +77,7 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
     
   }
 
-  private _patchLayer (oldMiddleware: KoaMiddleware) {
+  private _patchLayer (middlewareLayer: KoaMiddleware) {
     const patchedLayer = (context: KoaContext, next: koa.Next) => {
         const currentSpan = this._tracer.getCurrentSpan();
         if (!currentSpan) {
@@ -94,8 +94,9 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
         mwSpan.setAttribute(AttributeNames.METHOD, context.method);
         mwSpan.setAttribute(AttributeNames.KOA_TYPE, 'middleware');
         
-        oldMiddleware(context, next);
+        var result = middlewareLayer(context, next);
         mwSpan.end();
+        return result;
 
     }
     return patchedLayer;
