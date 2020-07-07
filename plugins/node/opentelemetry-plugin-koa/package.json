@@ -45,6 +45,7 @@
     "@opentelemetry/node": "0.9.0",
     "@opentelemetry/tracing": "0.9.0",
     "@types/koa": "^2.11.3",
+    "@types/koa__router": "^8.0.2",
     "@types/mocha": "7.0.2",
     "@types/node": "12.12.47",
     "@types/shimmer": "1.0.1",
