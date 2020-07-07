@@ -13,13 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { Middleware, ParameterizedContext, DefaultContext } from 'koa';
+import { Middleware, ParameterizedContext} from 'koa';
+import { RouterParamContext} from '@koa/router';
 
 export type Parameters<T> = T extends (...args: infer T) => any ? T : unknown[];
 
-export type KoaMiddleware = Middleware<ParameterizedContext<any, DefaultContext>>;
+export type KoaMiddleware = Middleware<any, RouterParamContext>;
 
-export type KoaContext = ParameterizedContext<ParameterizedContext<any, DefaultContext>, DefaultContext>;
+// export type KoaContext = ParameterizedContext<ParameterizedContext<any, DefaultContext>, DefaultContext>;
+export type KoaContext = ParameterizedContext<ParameterizedContext<any, any>, any>;
+
+export type KoaLayer = {
+    handle: Function;
+    name: string;
+    params: { [key: string]: string };
+    path: string;
+    regexp: RegExp;
+  };
 
 export enum AttributeNames {
     COMPONENT = 'component',
@@ -35,3 +45,33 @@ export enum AttributeNames {
 
 export const KoaComponentName : string = 'koa';
 
+/*
+
+Argument of type 
+'Middleware<ParameterizedContext<any, RouterParamContext<any, {}>>>' 
+is not assignable to parameter of type 
+'Middleware<ParameterizedContext<ParameterizedContext<any, DefaultContext>, DefaultContext>>'.
+
+
+
+Type 
+'ParameterizedContext<ParameterizedContext<any, DefaultContext>, DefaultContext>' 
+is not assignable to type 
+'ParameterizedContext<any, RouterParamContext<any, {}>>'.
+Type 'ExtendableContext & { state: ParameterizedContext<any, DefaultContext>; } & DefaultContext' is missing the following properties from type 'RouterParamContext<any, {}>': params, router, _matchedRoute, _matchedRouteNamez
+
+
+
+Argument of type 
+'Middleware<ParameterizedContext<any, RouterParamContext<any, {}>>>' 
+is not assignable to parameter of type 
+'Middleware<ParameterizedContext<ParameterizedContext<string, DefaultContext>, DefaultContext>>'.
+  
+
+Type 
+  'ParameterizedContext<ParameterizedContext<string, DefaultContext>, DefaultContext>' 
+  is not assignable to type 
+  'ParameterizedContext<any, RouterParamContext<any, {}>>'.
+
+
+*/
