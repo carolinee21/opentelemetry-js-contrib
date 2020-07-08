@@ -17,7 +17,7 @@
 import { BasePlugin } from '@opentelemetry/core';
 import * as koa from 'koa';
 import * as shimmer from 'shimmer';
-import { Parameters, KoaMiddleware, KoaContext, KoaComponentName } from './types';
+import { Parameters, KoaMiddleware, KoaContext, KoaComponentName, AttributeNames } from './types';
 import { VERSION } from './version';
 import { getMiddlewareMetadata } from './utils';
 // import { Layer } from '@koa/router';
@@ -65,18 +65,21 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
         middlewareFunction : KoaMiddleware,
         ...args: Parameters<typeof original>
       ) {
-        console.log("mw name: " + middlewareFunction.name);
+
         var isRouterDispatch = middlewareFunction.name == "dispatch";
         isRouterDispatch = (middlewareFunction as any).router;
-      var patchedFunction;
+
+        var patchedFunction;
         if (isRouterDispatch) {
           patchedFunction = plugin._patchRoutes(middlewareFunction);
         } else {
           patchedFunction = plugin._patchLayer(middlewareFunction, false);         
         }
-        const route = original.apply(this, [patchedFunction]);
 
-        return route;
+        args[0] = patchedFunction;
+        const res = original.apply(this, args);
+
+        return res;
 
         // tslint:disable-next-line:no-any
       } as any;
@@ -85,21 +88,23 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
 
   private _patchLayer (middlewareLayer: KoaMiddleware, isRouter: boolean, layerName?: string) {
     const plugin = this;
-    console.log(".....setting up span patch for: " + layerName ?? middlewareLayer.name);
     const patchedLayer = (context: KoaContext, next: koa.Next) => {
-        const currentSpan = this._tracer.getCurrentSpan();
-        if (!currentSpan) {
-            console.log('--- No current span');
+        if (plugin._tracer.getCurrentSpan() === undefined) {
+          
+          return middlewareLayer(context, next);
         } 
-
         const metadata = getMiddlewareMetadata(context);
         var spanName = layerName ?? middlewareLayer.name;
         if (!spanName) {
           spanName = metadata.name;
         }
+
         const span = plugin._tracer.startSpan(spanName, {
           attributes: metadata.attributes,
         });
+        if (isRouter) {
+          span.setAttribute(AttributeNames.PATH, layerName);
+        }
         var result = middlewareLayer(context, next);
         span.end();
         return result;
@@ -110,7 +115,6 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
 
   private _patchRoutes (dispatchLayer: KoaMiddleware) {
     const plugin = this;
-    console.log(".....set up");
 
     var smth = (dispatchLayer as any);
     var router = smth.router as Router;
@@ -128,14 +132,11 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
     }
     
     const dispatcher = (context: KoaContext, next: koa.Next) => {
-      console.log(".....dispatching");
       var result = smth(context, next);
       return result;
     }
     return dispatcher;
-
-  }
-  
+  }  
 }
 
 export const plugin = new KoaPlugin(KoaPlugin.component);
