@@ -28,7 +28,7 @@ import * as http from 'http';
 import { AddressInfo } from 'net';
 import { plugin } from '../src';
 import { 
-    AttributeNames
+    AttributeNames, KoaLayerType, KoaComponentName
 } from '../src/types';
 
 
@@ -123,12 +123,12 @@ describe('Koa Plugin', () => {
                 assert.notStrictEqual(requestHandlerSpan, undefined);
                 assert.strictEqual(
                   requestHandlerSpan?.attributes[AttributeNames.COMPONENT],
-                  'koa'
+                  KoaComponentName
                 );
                 
                 assert.strictEqual(
                   requestHandlerSpan?.attributes[AttributeNames.KOA_TYPE],
-                  'middleware'
+                  KoaLayerType.MIDDLEWARE
                 );
                 let exportedRootSpan = memoryExporter
                   .getFinishedSpans()
@@ -183,7 +183,7 @@ describe('Koa Plugin', () => {
       await tracer.withSpan(rootSpan, async () => {
         await httpRequest.get(`http://localhost:${port}`);
         rootSpan.end();
-        assert.deepEqual(memoryExporter.getFinishedSpans().length, 1);
+        assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 1);
         assert.notStrictEqual(memoryExporter.getFinishedSpans()[0], undefined);
       });
       server.close();

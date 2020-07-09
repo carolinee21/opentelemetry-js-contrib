@@ -31,7 +31,7 @@ import * as http from 'http';
 import { AddressInfo } from 'net';
 import { plugin } from '../src';
 import { 
-    AttributeNames
+    AttributeNames, KoaLayerType, KoaComponentName
 } from '../src/types';
 
 
@@ -121,16 +121,16 @@ describe('Koa Plugin', () => {
                 assert.notStrictEqual(requestHandlerSpan, undefined);
                 assert.strictEqual(
                   requestHandlerSpan?.attributes[AttributeNames.COMPONENT],
-                  'koa'
+                  KoaComponentName
                 );
                 
                 assert.strictEqual(
                   requestHandlerSpan?.attributes[AttributeNames.KOA_TYPE],
-                  'middleware'
+                  KoaLayerType.ROUTER
                 );
 
                 assert.strictEqual(
-                    requestHandlerSpan?.attributes[AttributeNames.PATH],
+                    requestHandlerSpan?.attributes[AttributeNames.HTTP_ROUTE],
                     '/post/:id'
                   );
 

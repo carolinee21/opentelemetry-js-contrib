@@ -17,7 +17,7 @@
 import { BasePlugin } from '@opentelemetry/core';
 import * as koa from 'koa';
 import * as shimmer from 'shimmer';
-import { Parameters, KoaMiddleware, KoaContext, KoaComponentName, AttributeNames } from './types';
+import { Parameters, KoaMiddleware, KoaContext, KoaComponentName } from './types';
 import { VERSION } from './version';
 import { getMiddlewareMetadata } from './utils';
 // import { Layer } from '@koa/router';
@@ -86,25 +86,18 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
     
   }
 
-  private _patchLayer (middlewareLayer: KoaMiddleware, isRouter: boolean, layerName?: string) {
+  private _patchLayer (middlewareLayer: KoaMiddleware, isRouter: boolean, layerPath?: string) {
     const plugin = this;
     const patchedLayer = (context: KoaContext, next: koa.Next) => {
         if (plugin._tracer.getCurrentSpan() === undefined) {
           
           return middlewareLayer(context, next);
         } 
-        const metadata = getMiddlewareMetadata(context);
-        var spanName = layerName ?? middlewareLayer.name;
-        if (!spanName) {
-          spanName = metadata.name;
-        }
-
-        const span = plugin._tracer.startSpan(spanName, {
+        const metadata = getMiddlewareMetadata(context, middlewareLayer, isRouter, layerPath);
+        const span = plugin._tracer.startSpan(metadata.name, {
           attributes: metadata.attributes,
         });
-        if (isRouter) {
-          span.setAttribute(AttributeNames.PATH, layerName);
-        }
+        
         var result = middlewareLayer(context, next);
         span.end();
         return result;

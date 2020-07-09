@@ -13,26 +13,47 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { AttributeNames, KoaContext, KoaComponentName } from './types';
+import { AttributeNames, KoaContext, KoaComponentName, KoaMiddleware, KoaLayerType } from './types';
 import { Attributes } from '@opentelemetry/api';
 
 
 export const getMiddlewareMetadata = (
-    context: KoaContext
+    context: KoaContext,
+    layer: KoaMiddleware,
+    isRouter: boolean,
+    layerPath?: string
 ) : {
     attributes: Attributes;
     name: string;
 } => {
-        return { 
+    if (isRouter) {
+        return {
             attributes: {
-                [AttributeNames.PATH]: context.path,
-                [AttributeNames.PROTOCOL]: context.protocol,
-                [AttributeNames.STATUS]: context.status,
-                [AttributeNames.HOST]: context.host,
-                [AttributeNames.METHOD]: context.method,
-                [AttributeNames.KOA_TYPE]: 'middleware',
+              [AttributeNames.KOA_NAME]: layerPath,
+              [AttributeNames.KOA_TYPE]: KoaLayerType.ROUTER,
+              [AttributeNames.COMPONENT]: KoaComponentName,
+              [AttributeNames.HTTP_ROUTE]: layerPath
+            },
+            name: `router - ${layerPath}`,
+          };
+    } else {
+        return {
+            attributes: {
+                [AttributeNames.KOA_NAME]: layer.name ?? 'middleware',
+                [AttributeNames.KOA_TYPE]: KoaLayerType.MIDDLEWARE,
                 [AttributeNames.COMPONENT]: KoaComponentName
-        },
-        name: 'middleware'
+            },
+            name: `middleware - ${layer.name}`,
+        };
     }
+    
+
+
+                // [AttributeNames.PATH]: context.path,
+                // [AttributeNames.PROTOCOL]: context.protocol,
+                // [AttributeNames.STATUS]: context.status,
+                // [AttributeNames.HOST]: context.host,
+                // [AttributeNames.METHOD]: context.method,
+
+    
 }

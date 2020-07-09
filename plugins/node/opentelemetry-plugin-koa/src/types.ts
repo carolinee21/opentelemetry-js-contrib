@@ -33,15 +33,20 @@ export type KoaLayer = {
 
 export enum AttributeNames {
     COMPONENT = 'component',
-    ROUTE = 'http.route',
-    PATH = 'http.path',
-    STATUS = 'http.status_code',
-    PROTOCOL = 'http.protocol',
-    HOST = 'http.host',
-    METHOD = 'http.method',
+    HTTP_ROUTE = 'http.route',
+    // PATH = 'http.path',
+    // STATUS = 'http.status_code',
+    // PROTOCOL = 'http.protocol',
+    // HOST = 'http.host',
+    // METHOD = 'http.method',
     KOA_TYPE = 'koa.type',
     KOA_NAME = 'koa.name'
 };
+
+export enum KoaLayerType {
+  ROUTER = 'router',
+  MIDDLEWARE = 'middleware',
+}
 
 export const KoaComponentName : string = 'koa';
 
