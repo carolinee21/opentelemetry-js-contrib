@@ -15,21 +15,14 @@
  */
 import { Middleware, ParameterizedContext} from 'koa';
 import { RouterParamContext} from '@koa/router';
+import { kLayerPatched } from './koa';
 
 export type Parameters<T> = T extends (...args: infer T) => any ? T : unknown[];
 
-export type KoaMiddleware = Middleware<any, RouterParamContext>;
+export type KoaMiddleware = Middleware<any, RouterParamContext> & {[kLayerPatched]?: boolean;};
 
 // export type KoaContext = ParameterizedContext<ParameterizedContext<any, DefaultContext>, DefaultContext>;
 export type KoaContext = ParameterizedContext<ParameterizedContext<any, any>, any>;
-
-export type KoaLayer = {
-    handle: Function;
-    name: string;
-    params: { [key: string]: string };
-    path: string;
-    regexp: RegExp;
-  };
 
 export enum AttributeNames {
     COMPONENT = 'component',

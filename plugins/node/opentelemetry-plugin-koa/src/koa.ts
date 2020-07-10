@@ -14,14 +14,20 @@
  * limitations under the License.
  */
 
-import { BasePlugin } from '@opentelemetry/core';
+import { BasePlugin, hrTime } from '@opentelemetry/core';
 import * as koa from 'koa';
 import * as shimmer from 'shimmer';
 import { Parameters, KoaMiddleware, KoaContext, KoaComponentName } from './types';
 import { VERSION } from './version';
 import { getMiddlewareMetadata } from './utils';
-// import { Layer } from '@koa/router';
 import Router = require('@koa/router');
+
+
+/**
+ * This symbol is used to mark a Koa layer as being already instrumented
+ * since its possible to use a given layer multiple times (ex: middlewares)
+ */
+export const kLayerPatched: unique symbol = Symbol('koa-layer-patched');
 
 
 /** Koa instrumentation plugin for OpenTelemetry */
@@ -86,8 +92,11 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
     
   }
 
-  private _patchLayer (middlewareLayer: KoaMiddleware, isRouter: boolean, layerPath?: string) {
+  private _patchLayer (middlewareLayer: KoaMiddleware, isRouter: boolean, layerPath?: string) : KoaMiddleware {
     const plugin = this;
+    if (middlewareLayer[kLayerPatched] === true) return middlewareLayer;
+    middlewareLayer[kLayerPatched] = true;
+
     const patchedLayer = (context: KoaContext, next: koa.Next) => {
         if (plugin._tracer.getCurrentSpan() === undefined) {
           
@@ -97,9 +106,10 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
         const span = plugin._tracer.startSpan(metadata.name, {
           attributes: metadata.attributes,
         });
+        const startTime = hrTime();
         
         var result = middlewareLayer(context, next);
-        span.end();
+        span.end(startTime);
         return result;
     }
     return patchedLayer;
@@ -118,9 +128,8 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
       var path = pathLayer.path;
       var pathStack = pathLayer.stack;
       for (var j = 0; j < pathStack.length; j++) {
-        var pop = pathStack[j];
-        var newpop = plugin._patchLayer(pop, true, path);
-        pathStack[j] = newpop;
+        var routedMiddleware : KoaMiddleware = pathStack[j];
+        pathStack[j] = plugin._patchLayer(routedMiddleware, true, path);;
       }
     }
     

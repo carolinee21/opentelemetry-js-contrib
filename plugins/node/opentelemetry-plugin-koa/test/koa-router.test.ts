@@ -55,7 +55,7 @@ const httpRequest = {
 };
 
 
-describe('Koa Plugin', () => {
+describe('Koa Plugin - Router Tests', () => {
     const logger = new NoopLogger();
     const provider = new NodeTracerProvider();
     const memoryExporter = new InMemorySpanExporter();

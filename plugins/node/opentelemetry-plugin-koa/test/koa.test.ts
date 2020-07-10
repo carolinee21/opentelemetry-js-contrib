@@ -52,7 +52,7 @@ const httpRequest = {
 };
 
 
-describe('Koa Plugin', () => {
+describe('Koa Plugin - Core Tests', () => {
     const logger = new NoopLogger();
     const provider = new NodeTracerProvider();
     const memoryExporter = new InMemorySpanExporter();
