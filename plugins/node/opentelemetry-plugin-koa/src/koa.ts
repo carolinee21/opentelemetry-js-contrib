@@ -1,5 +1,5 @@
-/*!
- * Copyright 2020, OpenTelemetry Authors
+/*
+ * Copyright The OpenTelemetry Authors
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,11 +17,15 @@
 import { BasePlugin, hrTime } from '@opentelemetry/core';
 import * as koa from 'koa';
 import * as shimmer from 'shimmer';
-import { Parameters, KoaMiddleware, KoaContext, KoaComponentName } from './types';
+import {
+  Parameters,
+  KoaMiddleware,
+  KoaContext,
+  KoaComponentName,
+} from './types';
 import { VERSION } from './version';
 import { getMiddlewareMetadata } from './utils';
 import Router = require('@koa/router');
-
 
 /**
  * This symbol is used to mark a Koa layer as being already instrumented
@@ -29,116 +33,110 @@ import Router = require('@koa/router');
  */
 export const kLayerPatched: unique symbol = Symbol('koa-layer-patched');
 
-
 /** Koa instrumentation plugin for OpenTelemetry */
 export class KoaPlugin extends BasePlugin<typeof koa> {
   static readonly component = KoaComponentName;
 
-    constructor(readonly moduleName: string) {
-        super('@opentelemetry/plugin-koa', VERSION);
+  constructor(readonly moduleName: string) {
+    super('@opentelemetry/plugin-koa', VERSION);
+  }
+
+  protected patch(): typeof koa {
+    this._logger.debug('Patching Koa');
+
+    if (this._moduleExports === undefined || this._moduleExports === null) {
+      return this._moduleExports;
     }
+    this._logger.debug('Patching Koa.use');
+    const appProto = this._moduleExports.prototype;
+    shimmer.wrap(appProto, 'use', this._getKoaUsePatch.bind(this));
 
-    protected patch(): typeof koa {
-        if (this._moduleExports === undefined || this._moduleExports === null) {
-            return this._moduleExports;
-        }
-        var appProto = this._moduleExports.prototype;
-        shimmer.wrap(
-            appProto,
-            'use',
-            this._getAppUsePatch.bind(this)
-        );
+    return this._moduleExports;
+  }
+  protected unpatch(): void {
+    const appProto = this._moduleExports.prototype;
+    shimmer.unwrap(appProto, 'use');
+  }
 
-        return this._moduleExports;
-
-    }
-    protected unpatch(): void {
-        var appProto = this._moduleExports.prototype;
-        shimmer.unwrap(appProto, 'use');
-    }
-
-    /**
-   * Patches the Application.use function in order to instrument each original
+  /**
+   * Patches the Koa.use function in order to instrument each original
    * middleware layer which is introduced
    * @param original
    */
-  private _getAppUsePatch( original: Function )
-    {
-    const plugin = this;
-
+  private _getKoaUsePatch(original: (middleware: KoaMiddleware) => koa) {
     return function use(
-        this : koa,
-        middlewareFunction : KoaMiddleware,
-        ...args: Parameters<typeof original>
-      ) {
+      this: koa,
+      middlewareFunction: KoaMiddleware,
+      ...args: Parameters<typeof original>
+    ) {
+      let patchedFunction;
+      if (middlewareFunction.router) {
+        patchedFunction = plugin._patchRouterDispatch(middlewareFunction);
+      } else {
+        patchedFunction = plugin._patchLayer(middlewareFunction, false);
+      }
 
-        var isRouterDispatch = middlewareFunction.name == "dispatch";
-        isRouterDispatch = (middlewareFunction as any).router;
+      args[0] = patchedFunction;
+      const res = original.apply(this, args);
 
-        var patchedFunction;
-        if (isRouterDispatch) {
-          patchedFunction = plugin._patchRoutes(middlewareFunction);
-        } else {
-          patchedFunction = plugin._patchLayer(middlewareFunction, false);         
-        }
+      return res;
 
-        args[0] = patchedFunction;
-        const res = original.apply(this, args);
-
-        return res;
-
-        // tslint:disable-next-line:no-any
-      } as any;
-    
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any;
   }
 
-  private _patchLayer (middlewareLayer: KoaMiddleware, isRouter: boolean, layerPath?: string) : KoaMiddleware {
-    const plugin = this;
-    if (middlewareLayer[kLayerPatched] === true) return middlewareLayer;
-    middlewareLayer[kLayerPatched] = true;
+  private _patchRouterDispatch(dispatchLayer: KoaMiddleware) {
+    this._logger.debug('Patching @koa/router dispatch');
 
-    const patchedLayer = (context: KoaContext, next: koa.Next) => {
-        if (plugin._tracer.getCurrentSpan() === undefined) {
-          
-          return middlewareLayer(context, next);
-        } 
-        const metadata = getMiddlewareMetadata(context, middlewareLayer, isRouter, layerPath);
-        const span = plugin._tracer.startSpan(metadata.name, {
-          attributes: metadata.attributes,
-        });
-        const startTime = hrTime();
-        
-        var result = middlewareLayer(context, next);
-        span.end(startTime);
-        return result;
-    }
-    return patchedLayer;
-  }
-  
+    const router = dispatchLayer.router;
 
-  private _patchRoutes (dispatchLayer: KoaMiddleware) {
-    const plugin = this;
-
-    var smth = (dispatchLayer as any);
-    var router = smth.router as Router;
-    
-    var routesStack = router.stack;
-    for (var i = 0; i < routesStack.length; i++) {
-      var pathLayer : Router.Layer = routesStack[i];
-      var path = pathLayer.path;
-      var pathStack = pathLayer.stack;
-      for (var j = 0; j < pathStack.length; j++) {
-        var routedMiddleware : KoaMiddleware = pathStack[j];
-        pathStack[j] = plugin._patchLayer(routedMiddleware, true, path);;
+    const routesStack = router?.stack ?? [];
+    for (let i = 0; i < routesStack.length; i++) {
+      const pathLayer: Router.Layer = routesStack[i];
+      const path = pathLayer.path;
+      const pathStack = pathLayer.stack;
+      for (let j = 0; j < pathStack.length; j++) {
+        const routedMiddleware: KoaMiddleware = pathStack[j];
+        pathStack[j] = this._patchLayer(routedMiddleware, true, path);
       }
     }
-    
+
     const dispatcher = (context: KoaContext, next: koa.Next) => {
-      var result = smth(context, next);
+      const result = dispatchLayer(context, next);
       return result;
-    }
+    };
     return dispatcher;
-  }  
+  }
+
+  private _patchLayer(
+    middlewareLayer: KoaMiddleware,
+    isRouter: boolean,
+    layerPath?: string
+  ): KoaMiddleware {
+    if (middlewareLayer[kLayerPatched] === true) return middlewareLayer;
+    middlewareLayer[kLayerPatched] = true;
+    this._logger.debug('patching Koa middleware layer');
+
+    return (context: KoaContext, next: koa.Next) => {
+      if (this._tracer.getCurrentSpan() === undefined) {
+        return middlewareLayer(context, next);
+      }
+      const metadata = getMiddlewareMetadata(
+        context,
+        middlewareLayer,
+        isRouter,
+        layerPath
+      );
+      const span = this._tracer.startSpan(metadata.name, {
+        attributes: metadata.attributes,
+      });
+      const startTime = hrTime();
+
+      const result = middlewareLayer(context, next);
+      span.end(startTime);
+      return result;
+    };
+  }
 }
 
 export const plugin = new KoaPlugin(KoaPlugin.component);
