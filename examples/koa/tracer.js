@@ -21,12 +21,12 @@ module.exports = (serviceName) => {
     },
   });
 
-  provider.addSpanProcessor(new SimpleSpanProcessor(new ZipkinExporter({
-    serviceName,
-  })));
-  provider.addSpanProcessor(new SimpleSpanProcessor(new JaegerExporter({
-    serviceName,
-  })));
+  
+if (process.env.EXPORTER == 'jaeger') {
+  provider.addSpanProcessor(new SimpleSpanProcessor(new JaegerExporter({serviceName})));
+} else {
+  provider.addSpanProcessor(new SimpleSpanProcessor(new ZipkinExporter({serviceName})));
+}
 
   // Initialize the OpenTelemetry APIs to use the NodeTracerProvider bindings
   provider.register();

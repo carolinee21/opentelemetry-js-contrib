@@ -28,7 +28,7 @@ async function setUp () {
 */
 const posts = ["post 0", "post 1", "post 2"];
 
-async function addPost(ctx) {
+async function addPost(ctx, next) {
     posts.push("post " + posts.length);
     console.log("addPost");
     const currentSpan = tracer.getCurrentSpan();
@@ -38,8 +38,8 @@ async function addPost(ctx) {
     const viewNewPost = ctx.redirect(`/post/3`);
 }
 
-async function showNewPost(ctx) {
-    console.log("showPost");
+async function showNewPost(ctx, next) {
+    console.log("showNewPost");
     const id = ctx.params.id;
     const post = posts[id];
     if (!post) ctx.throw(404, 'Invalid post id');
@@ -48,8 +48,13 @@ async function showNewPost(ctx) {
 
 async function runTest (ctx, next) {
     console.log("runTest");
+    const currentSpan = tracer.getCurrentSpan();
+    const { traceId } = currentSpan.context();
+    console.log(`traceid: ${traceId}`);
+    console.log(`Jaeger URL: http://localhost:16686/trace/${traceId}`);
+    console.log(`Zipkin URL: http://localhost:9411/zipkin/traces/${traceId}`);
     ctx.body = "All posts: " + posts;
-    const addNewPost = ctx.redirect(`/post/new`);
+    const addNewPost = await ctx.redirect(`/post/new`);
 }
 
 function no_op (ctx, next) {
