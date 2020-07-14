@@ -14,13 +14,12 @@ const PORT = 8081;
 
 // route definitions
 router.get('/run_test', runTest)
-    .get('/list', listPosts)
     .get('/post/new', addPost)
-    .get('/post/:id', showPost);
+    .get('/post/:id', showNewPost);
     
 
 async function setUp () {
-    app.use(welcome);
+    app.use(no_op);
     app.use(router.routes());
 }
 
@@ -28,12 +27,6 @@ async function setUp () {
  *  Router functions: list, add, or show posts
 */
 const posts = ["post 0", "post 1", "post 2"];
-
-async function listPosts(ctx) {
-    ctx.body = "All posts: " + posts;
-    console.log("listPosts");
-    const addNewPost = ctx.redirect(`/post/new`);
-}
 
 async function addPost(ctx) {
     posts.push("post " + posts.length);
@@ -45,7 +38,7 @@ async function addPost(ctx) {
     const viewNewPost = ctx.redirect(`/post/3`);
 }
 
-async function showPost(ctx) {
+async function showNewPost(ctx) {
     console.log("showPost");
     const id = ctx.params.id;
     const post = posts[id];
@@ -55,16 +48,16 @@ async function showPost(ctx) {
 
 async function runTest (ctx, next) {
     console.log("runTest");
-    const postList = await ctx.redirect(`/list`);
-       
+    ctx.body = "All posts: " + posts;
+    const addNewPost = ctx.redirect(`/post/new`);
 }
 
-function welcome (ctx, next) {
-    ctx.body = "Welcome to the Koa example";
+function no_op (ctx, next) {
+    console.log("Sample basic koa middleware");
     next();
 }
 
 setUp().then(() => {
     app.listen(PORT);
     console.log(`Listening on http://localhost:${PORT}`);
-  });
+});
