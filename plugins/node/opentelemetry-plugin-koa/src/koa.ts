@@ -116,8 +116,7 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
     if (middlewareLayer[kLayerPatched] === true) return middlewareLayer;
     middlewareLayer[kLayerPatched] = true;
     this._logger.debug('patching Koa middleware layer');
-
-    return (context: KoaContext, next: koa.Next) => {
+    return async (context: KoaContext, next: koa.Next) => {
       if (this._tracer.getCurrentSpan() === undefined) {
         return middlewareLayer(context, next);
       }
@@ -132,7 +131,7 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
       });
       const startTime = hrTime();
 
-      const result = middlewareLayer(context, next);
+      const result = await middlewareLayer(context, next);
       span.end(startTime);
       return result;
     };

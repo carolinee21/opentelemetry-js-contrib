@@ -83,6 +83,13 @@ describe('Koa Plugin - Core Tests', () => {
     return next();
   };
 
+  const asyncMiddleware: koa.Middleware = async (ctx, next) => {
+    const start = Date.now();
+    await next();
+    const ms = Date.now() - start;
+    console.log(`${ctx.method} ${ctx.url} - ${ms}ms`);
+  };
+
   describe('Instrumenting core middleware calls', () => {
     it('should create a child span for middlewares', async () => {
       const rootSpan = tracer.startSpan('rootSpan');
@@ -149,6 +156,41 @@ describe('Koa Plugin - Core Tests', () => {
       const res = await httpRequest.get(`http://localhost:${port}`);
       assert.strictEqual(memoryExporter.getFinishedSpans().length, 0);
       assert.strictEqual(res, 'test');
+      server.close();
+    });
+
+    it('should handle async middleware functions', async () => {
+      const rootSpan = tracer.startSpan('rootSpan');
+      const app = new koa();
+      app.use((ctx, next) => tracer.withSpan(rootSpan, next));
+      app.use(asyncMiddleware);
+
+      const server = http.createServer(app.callback());
+      await new Promise(resolve => server.listen(0, resolve));
+      const port = (server.address() as AddressInfo).port;
+      assert.strictEqual(memoryExporter.getFinishedSpans().length, 0);
+
+      await tracer.withSpan(rootSpan, async () => {
+        await httpRequest.get(`http://localhost:${port}`);
+        rootSpan.end();
+
+        const requestHandlerSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name.includes('asyncMiddleware'));
+        assert.notStrictEqual(requestHandlerSpan, undefined);
+        assert.strictEqual(
+          requestHandlerSpan?.attributes[AttributeNames.COMPONENT],
+          KoaComponentName
+        );
+        assert.strictEqual(
+          requestHandlerSpan?.attributes[AttributeNames.KOA_TYPE],
+          KoaLayerType.MIDDLEWARE
+        );
+        const exportedRootSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name === 'rootSpan');
+        assert.notStrictEqual(exportedRootSpan, undefined);
+      });
       server.close();
     });
   });
