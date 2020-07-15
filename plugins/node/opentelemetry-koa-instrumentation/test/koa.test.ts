@@ -26,7 +26,7 @@ import * as assert from 'assert';
 import * as koa from 'koa';
 import * as http from 'http';
 import { AddressInfo } from 'net';
-import { plugin } from '../src';
+import { koaInstrumentation } from '../src';
 import { AttributeNames, KoaLayerType, KoaComponentName } from '../src/types';
 
 const httpRequest = {
@@ -48,7 +48,7 @@ const httpRequest = {
   },
 };
 
-describe('Koa Plugin - Core Tests', () => {
+describe('Koa Instrumentation - Core Tests', () => {
   const logger = new NoopLogger();
   const provider = new NodeTracerProvider();
   const memoryExporter = new InMemorySpanExporter();
@@ -58,7 +58,7 @@ describe('Koa Plugin - Core Tests', () => {
   let contextManager: AsyncHooksContextManager;
 
   before(() => {
-    plugin.enable(koa, provider, logger);
+    koaInstrumentation.enable(koa, provider, logger);
   });
 
   beforeEach(() => {
@@ -195,9 +195,9 @@ describe('Koa Plugin - Core Tests', () => {
     });
   });
 
-  describe('Disabling plugin', () => {
+  describe('Disabling koa instrumentation', () => {
     it('should not create new spans', async () => {
-      plugin.disable();
+      koaInstrumentation.disable();
       const rootSpan = tracer.startSpan('rootSpan');
       const app = new koa();
       app.use(customMiddleware);

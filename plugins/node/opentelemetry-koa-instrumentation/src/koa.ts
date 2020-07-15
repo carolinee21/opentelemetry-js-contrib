@@ -33,12 +33,12 @@ import Router = require('@koa/router');
  */
 export const kLayerPatched: unique symbol = Symbol('koa-layer-patched');
 
-/** Koa instrumentation plugin for OpenTelemetry */
-export class KoaPlugin extends BasePlugin<typeof koa> {
+/** Koa instrumentation for OpenTelemetry */
+export class KoaInstrumentation extends BasePlugin<typeof koa> {
   static readonly component = KoaComponentName;
 
   constructor(readonly moduleName: string) {
-    super('@opentelemetry/plugin-koa', VERSION);
+    super('@opentelemetry/koa-instrumentation', VERSION);
   }
 
   protected patch(): typeof koa {
@@ -71,9 +71,9 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
     ) {
       let patchedFunction;
       if (middlewareFunction.router) {
-        patchedFunction = plugin._patchRouterDispatch(middlewareFunction);
+        patchedFunction = koaInstrumentation._patchRouterDispatch(middlewareFunction);
       } else {
-        patchedFunction = plugin._patchLayer(middlewareFunction, false);
+        patchedFunction = koaInstrumentation._patchLayer(middlewareFunction, false);
       }
 
       args[0] = patchedFunction;
@@ -138,4 +138,4 @@ export class KoaPlugin extends BasePlugin<typeof koa> {
   }
 }
 
-export const plugin = new KoaPlugin(KoaPlugin.component);
+export const koaInstrumentation = new KoaInstrumentation(KoaComponentName);

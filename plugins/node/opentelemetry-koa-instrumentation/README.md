@@ -12,16 +12,16 @@ For automatic instrumentation see the
 ## Installation
 
 ```bash
-npm install --save @opentelemetry/plugin-koa
+npm install --save @opentelemetry/koa-instrumentation
 ```
 ### Supported Versions
- - `^2.0.0`
+ - Koa `^2.0.0`
 
 ## Usage
 
 OpenTelemetry Koa Instrumentation allows the user to automatically collect trace data and export them to their backend of choice, to give observability to distributed systems.
 
-To load a specific plugin (Koa in this case), specify it in the Node Tracer's configuration.
+To load a specific instrumentation (Koa in this case), specify it in the Node Tracer's configuration.
 ```js
 const { NodeTracerProvider } = require('@opentelemetry/node');
 
@@ -30,13 +30,13 @@ const provider = new NodeTracerProvider({
     koa: {
       enabled: true,
       // You may use a package name or absolute path to the file.
-      path: '@opentelemetry/plugin-koa',
+      path: '@opentelemetry/koa-instrumentation',
     }
   }
 });
 ```
 
-To load all of the [supported plugins](https://github.com/open-telemetry/opentelemetry-js#plugins), use below approach. Each plugin is only loaded when the module that it patches is loaded; in other words, there is no computational overhead for listing plugins for unused modules.
+To load all of the [supported instrumentations](https://github.com/open-telemetry/opentelemetry-js#plugins), use below approach. Each instrumentation is only loaded when the module that it patches is loaded; in other words, there is no computational overhead for listing instrumentations for unused modules.
 ```js
 const { NodeTracerProvider } = require('@opentelemetry/node');
 
@@ -62,11 +62,7 @@ Apache 2.0 - See [LICENSE][license-url] for more information.
 [gitter-url]: https://gitter.im/open-telemetry/opentelemetry-node?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge
 [license-url]: https://github.com/open-telemetry/opentelemetry-js-contrib/blob/master/LICENSE
 [license-image]: https://img.shields.io/badge/license-Apache_2.0-green.svg?style=flat
-[dependencies-image]: https://david-dm.org/open-telemetry/opentelemetry-js-contrib/status.svg?path=plugins/node/opentelemetry-plugin-koa
-
-[dependencies-url]: https://david-dm.org/open-telemetry/opentelemetry-js-contrib?path=plugins/node/opentelemetry-plugin-koa
-
-[devDependencies-image]: https://david-dm.org/open-telemetry/opentelemetry-js-contrib/dev-status.svg?path=plugins/node/opentelemetry-plugin-koa
-
-[devDependencies-url]: https://david-dm.org/open-telemetry/opentelemetry-js-contrib?path=plugins/node/opentelemetry-plugin-koa&type=dev
-
+[dependencies-image]: https://david-dm.org/open-telemetry/opentelemetry-js-contrib/status.svg?path=plugins/node/opentelemetry-koa-instrumentation
+[dependencies-url]: https://david-dm.org/open-telemetry/opentelemetry-js-contrib?path=plugins/node/opentelemetry-koa-instrumentation
+[devDependencies-image]: https://david-dm.org/open-telemetry/opentelemetry-js-contrib/dev-status.svg?path=plugins/node/opentelemetry-koa-instrumentation
+[devDependencies-url]: https://david-dm.org/open-telemetry/opentelemetry-js-contrib?path=plugins/node/opentelemetry-koa-instrumentation&type=dev

@@ -25,11 +25,9 @@ import {
 import * as assert from 'assert';
 import * as koa from 'koa';
 import * as KoaRouter from '@koa/router';
-// const router = require('@koa/router')();
-
 import * as http from 'http';
 import { AddressInfo } from 'net';
-import { plugin } from '../src';
+import { koaInstrumentation } from '../src';
 import { AttributeNames, KoaLayerType, KoaComponentName } from '../src/types';
 
 const httpRequest = {
@@ -51,7 +49,7 @@ const httpRequest = {
   },
 };
 
-describe('Koa Plugin - Router Tests', () => {
+describe('Koa Instrumentation - Router Tests', () => {
   const logger = new NoopLogger();
   const provider = new NodeTracerProvider();
   const memoryExporter = new InMemorySpanExporter();
@@ -61,7 +59,7 @@ describe('Koa Plugin - Router Tests', () => {
   let contextManager: AsyncHooksContextManager;
 
   before(() => {
-    plugin.enable(koa, provider, logger);
+    koaInstrumentation.enable(koa, provider, logger);
   });
 
   beforeEach(() => {
