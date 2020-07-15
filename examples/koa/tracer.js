@@ -6,13 +6,15 @@ const { SimpleSpanProcessor } = require('@opentelemetry/tracing');
 const { JaegerExporter } = require('@opentelemetry/exporter-jaeger');
 const { ZipkinExporter } = require('@opentelemetry/exporter-zipkin');
 
+const EXPORTER = process.env.EXPORTER || '';
+
 module.exports = (serviceName) => {
   const provider = new NodeTracerProvider({
     plugins: {
       koa: {
         enabled: true,
-        path: "@opentelemetry/plugin-koa",
-        enhancedDatabaseReporting: true
+        path: '@opentelemetry/plugin-koa',
+        enhancedDatabaseReporting: true,
       },
       http: {
         enabled: true,
@@ -21,12 +23,13 @@ module.exports = (serviceName) => {
     },
   });
 
-  
-if (process.env.EXPORTER == 'jaeger') {
-  provider.addSpanProcessor(new SimpleSpanProcessor(new JaegerExporter({serviceName})));
-} else {
-  provider.addSpanProcessor(new SimpleSpanProcessor(new ZipkinExporter({serviceName})));
-}
+  let exporter;
+  if (EXPORTER === 'jaeger') {
+    exporter = new JaegerExporter({ serviceName });
+  } else {
+    exporter = new ZipkinExporter({ serviceName });
+  }
+  provider.addSpanProcessor(new SimpleSpanProcessor(exporter));
 
   // Initialize the OpenTelemetry APIs to use the NodeTracerProvider bindings
   provider.register();

@@ -8,7 +8,9 @@
     "zipkin:server": "cross-env EXPORTER=zipkin node ./server.js",
     "zipkin:client": "cross-env EXPORTER=zipkin node ./client.js",
     "jaeger:server": "cross-env EXPORTER=jaeger node ./server.js",
-    "jaeger:client": "cross-env EXPORTER=jaeger node ./client.js"
+    "jaeger:client": "cross-env EXPORTER=jaeger node ./client.js",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix"
   },
   "repository": {
     "type": "git",
@@ -41,6 +43,7 @@
   },
   "homepage": "https://github.com/open-telemetry/opentelemetry-js-contrib#readme",
   "devDependencies": {
-    "cross-env": "^6.0.0"
+    "cross-env": "^6.0.0",
+    "eslint": "^7.4.0"
   }
 }
