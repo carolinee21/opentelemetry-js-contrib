@@ -13,7 +13,7 @@ module.exports = (serviceName) => {
     plugins: {
       koa: {
         enabled: true,
-        path: '@opentelemetry/plugin-koa',
+        path: '@opentelemetry/koa-instrumentation',
         enhancedDatabaseReporting: true,
       },
       http: {

@@ -26,7 +26,7 @@ import * as assert from 'assert';
 import * as koa from 'koa';
 import * as http from 'http';
 import { AddressInfo } from 'net';
-import { koaInstrumentation } from '../src';
+import { plugin } from '../src';
 import { AttributeNames, KoaLayerType, KoaComponentName } from '../src/types';
 
 const httpRequest = {
@@ -58,7 +58,7 @@ describe('Koa Instrumentation - Core Tests', () => {
   let contextManager: AsyncHooksContextManager;
 
   before(() => {
-    koaInstrumentation.enable(koa, provider, logger);
+    plugin.enable(koa, provider, logger);
   });
 
   beforeEach(() => {
@@ -87,7 +87,7 @@ describe('Koa Instrumentation - Core Tests', () => {
     const start = Date.now();
     await next();
     const ms = Date.now() - start;
-    console.log(`${ctx.method} ${ctx.url} - ${ms}ms`);
+    ctx.body = `${ctx.method} ${ctx.url} - ${ms}ms`;
   };
 
   describe('Instrumenting core middleware calls', () => {
@@ -197,7 +197,7 @@ describe('Koa Instrumentation - Core Tests', () => {
 
   describe('Disabling koa instrumentation', () => {
     it('should not create new spans', async () => {
-      koaInstrumentation.disable();
+      plugin.disable();
       const rootSpan = tracer.startSpan('rootSpan');
       const app = new koa();
       app.use(customMiddleware);

@@ -18,8 +18,9 @@
   },
   "keywords": [
     "opentelemetry",
-    "express",
-    "tracing"
+    "koa",
+    "tracing",
+    "instrumentation"
   ],
   "engines": {
     "node": ">=8"
@@ -36,7 +37,7 @@
     "@opentelemetry/exporter-zipkin": "^0.8.3",
     "@opentelemetry/node": "^0.8.3",
     "@opentelemetry/plugin-http": "^0.8.3",
-    "@opentelemetry/plugin-koa": "../../plugins/node/opentelemetry-plugin-koa",
+    "@opentelemetry/koa-instrumentation": "../../plugins/node/opentelemetry-koa-instrumentation",
     "@opentelemetry/tracing": "^0.8.3",
     "axios": "^0.19.0",
     "koa": "^2.13.0"

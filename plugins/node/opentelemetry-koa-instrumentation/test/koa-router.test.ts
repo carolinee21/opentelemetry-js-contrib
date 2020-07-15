@@ -27,7 +27,7 @@ import * as koa from 'koa';
 import * as KoaRouter from '@koa/router';
 import * as http from 'http';
 import { AddressInfo } from 'net';
-import { koaInstrumentation } from '../src';
+import { plugin } from '../src';
 import { AttributeNames, KoaLayerType, KoaComponentName } from '../src/types';
 
 const httpRequest = {
@@ -59,7 +59,7 @@ describe('Koa Instrumentation - Router Tests', () => {
   let contextManager: AsyncHooksContextManager;
 
   before(() => {
-    koaInstrumentation.enable(koa, provider, logger);
+    plugin.enable(koa, provider, logger);
   });
 
   beforeEach(() => {
@@ -87,7 +87,7 @@ describe('Koa Instrumentation - Router Tests', () => {
       });
       router.get('/post/:id', ctx => {
         const id = ctx.params.id;
-        console.log('id is: ' + id);
+        ctx.body = 'Post id: ' + id;
       });
 
       router.post('/post', async ctx => {
