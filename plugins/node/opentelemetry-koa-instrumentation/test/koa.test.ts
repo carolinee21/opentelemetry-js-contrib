@@ -99,7 +99,6 @@ describe('Koa Instrumentation - Core Tests', () => {
       app.use(customMiddleware);
       app.use(simpleResponse);
 
-
       const server = http.createServer(app.callback());
       await new Promise(resolve => server.listen(0, resolve));
       const port = (server.address() as AddressInfo).port;
