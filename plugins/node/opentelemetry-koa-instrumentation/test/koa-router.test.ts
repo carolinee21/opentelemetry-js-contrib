@@ -79,21 +79,9 @@ describe('Koa Instrumentation - Router Tests', () => {
       app.use((ctx, next) => tracer.withSpan(rootSpan, next));
 
       const router = new KoaRouter();
-      router.get('/', ctx => {
-        ctx.body = 'list';
-      });
-      router.get('/post/new', ctx => {
-        ctx.body = 'add';
-      });
       router.get('/post/:id', ctx => {
         const id = ctx.params.id;
         ctx.body = 'Post id: ' + id;
-      });
-
-      router.post('/post', async ctx => {
-        const post = ctx.body;
-        post.created_at = new Date();
-        ctx.redirect('/');
       });
 
       app.use(router.routes());
@@ -110,7 +98,7 @@ describe('Koa Instrumentation - Router Tests', () => {
         assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 2);
         const requestHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('/post/:id'));
+          .find(span => span.name.includes('router - /post/:id'));
         assert.notStrictEqual(requestHandlerSpan, undefined);
         assert.strictEqual(
           requestHandlerSpan?.attributes[AttributeNames.COMPONENT],

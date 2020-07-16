@@ -28,6 +28,7 @@ import * as http from 'http';
 import { AddressInfo } from 'net';
 import { plugin } from '../src';
 import { AttributeNames, KoaLayerType, KoaComponentName } from '../src/types';
+import { nextTick } from 'process';
 
 const httpRequest = {
   get: (options: http.ClientRequestArgs | string) => {
@@ -71,16 +72,16 @@ describe('Koa Instrumentation - Core Tests', () => {
     context.disable();
   });
 
-  const simpleResponse: koa.Middleware = (ctx, next) => {
+  const simpleResponse: koa.Middleware = async (ctx, next) => {
     ctx.body = 'test';
-    return next();
+    await next();
   };
 
-  const customMiddleware: koa.Middleware = (ctx, next) => {
+  const customMiddleware: koa.Middleware = async (ctx, next) => {
     for (let i = 0; i < 1000000; i++) {
       continue;
     }
-    return next();
+    await next();
   };
 
   const asyncMiddleware: koa.Middleware = async (ctx, next) => {
@@ -98,10 +99,6 @@ describe('Koa Instrumentation - Core Tests', () => {
       app.use(customMiddleware);
       app.use(simpleResponse);
 
-      app.use((ctx, next) => {
-        ctx.body = 'anonymous';
-        return next();
-      });
 
       const server = http.createServer(app.callback());
       await new Promise(resolve => server.listen(0, resolve));
@@ -111,6 +108,7 @@ describe('Koa Instrumentation - Core Tests', () => {
       await tracer.withSpan(rootSpan, async () => {
         await httpRequest.get(`http://localhost:${port}`);
         rootSpan.end();
+        assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 5);
 
         assert.notStrictEqual(
           memoryExporter
@@ -173,6 +171,7 @@ describe('Koa Instrumentation - Core Tests', () => {
       await tracer.withSpan(rootSpan, async () => {
         await httpRequest.get(`http://localhost:${port}`);
         rootSpan.end();
+        assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 3);
 
         const requestHandlerSpan = memoryExporter
           .getFinishedSpans()
