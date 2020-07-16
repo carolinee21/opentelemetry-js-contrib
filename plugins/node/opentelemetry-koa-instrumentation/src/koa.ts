@@ -22,16 +22,11 @@ import {
   KoaMiddleware,
   KoaContext,
   KoaComponentName,
+  kLayerPatched,
 } from './types';
 import { VERSION } from './version';
 import { getMiddlewareMetadata } from './utils';
 import Router = require('@koa/router');
-
-/**
- * This symbol is used to mark a Koa layer as being already instrumented
- * since its possible to use a given layer multiple times (ex: middlewares)
- */
-export const kLayerPatched: unique symbol = Symbol('koa-layer-patched');
 
 /** Koa instrumentation for OpenTelemetry */
 export class KoaInstrumentation extends BasePlugin<typeof koa> {

@@ -15,11 +15,16 @@
  */
 import { Middleware, ParameterizedContext, DefaultState } from 'koa';
 import { RouterParamContext } from '@koa/router';
-import { kLayerPatched } from './koa';
 import Router = require('@koa/router');
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Parameters<T> = T extends (...args: infer T) => any ? T : unknown[];
+
+/**
+ * This symbol is used to mark a Koa layer as being already instrumented
+ * since its possible to use a given layer multiple times (ex: middlewares)
+ */
+export const kLayerPatched: unique symbol = Symbol('koa-layer-patched');
 
 export type KoaMiddleware = Middleware<DefaultState, KoaContext> & {
   [kLayerPatched]?: boolean;

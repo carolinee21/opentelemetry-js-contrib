@@ -28,7 +28,6 @@ import * as http from 'http';
 import { AddressInfo } from 'net';
 import { plugin } from '../src';
 import { AttributeNames, KoaLayerType, KoaComponentName } from '../src/types';
-import { nextTick } from 'process';
 
 const httpRequest = {
   get: (options: http.ClientRequestArgs | string) => {
