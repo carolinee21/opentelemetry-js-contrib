@@ -26,9 +26,8 @@ async function setUp() {
 */
 const posts = ['post 0', 'post 1', 'post 2'];
 
-async function addPost(ctx) {
+function addPost(ctx) {
   posts.push(`post ${posts.length}`);
-  console.log('addPost');
   const currentSpan = tracer.getCurrentSpan();
   currentSpan.addEvent('Added post');
   currentSpan.setAttribute('Date', new Date());
@@ -37,14 +36,16 @@ async function addPost(ctx) {
 }
 
 async function showNewPost(ctx) {
-  console.log('showNewPost');
   const { id } = ctx.params;
+  console.log(`showNewPost with id: ${id}`);
   const post = posts[id];
   if (!post) ctx.throw(404, 'Invalid post id');
+  const syntheticDelay = 500;
+  await new Promise((r) => setTimeout(r, syntheticDelay));
   ctx.body = post;
 }
 
-async function runTest(ctx) {
+function runTest(ctx) {
   console.log('runTest');
   const currentSpan = tracer.getCurrentSpan();
   const { traceId } = currentSpan.context();
@@ -55,8 +56,10 @@ async function runTest(ctx) {
   ctx.redirect('/post/new');
 }
 
-function no_op(ctx, next) {
+async function no_op(ctx, next) {
   console.log('Sample basic koa middleware');
+  const syntheticDelay = 100;
+  await new Promise((r) => setTimeout(r, syntheticDelay));
   next();
 }
 

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { BasePlugin, hrTime } from '@opentelemetry/core';
+import { BasePlugin } from '@opentelemetry/core';
 import * as koa from 'koa';
 import * as shimmer from 'shimmer';
 import {
@@ -36,6 +36,7 @@ export const kLayerPatched: unique symbol = Symbol('koa-layer-patched');
 /** Koa instrumentation for OpenTelemetry */
 export class KoaInstrumentation extends BasePlugin<typeof koa> {
   static readonly component = KoaComponentName;
+  readonly supportedVersions = ['^2.0.0'];
 
   constructor(readonly moduleName: string) {
     super('@opentelemetry/koa-instrumentation', VERSION);
@@ -71,9 +72,9 @@ export class KoaInstrumentation extends BasePlugin<typeof koa> {
     ) {
       let patchedFunction;
       if (middlewareFunction.router) {
-        patchedFunction = koaInstrumentation._patchRouterDispatch(middlewareFunction);
+        patchedFunction = plugin._patchRouterDispatch(middlewareFunction);
       } else {
-        patchedFunction = koaInstrumentation._patchLayer(middlewareFunction, false);
+        patchedFunction = plugin._patchLayer(middlewareFunction, false);
       }
 
       args[0] = patchedFunction;
@@ -100,7 +101,6 @@ export class KoaInstrumentation extends BasePlugin<typeof koa> {
         pathStack[j] = this._patchLayer(routedMiddleware, true, path);
       }
     }
-
     const dispatcher = (context: KoaContext, next: koa.Next) => {
       const result = dispatchLayer(context, next);
       return result;
@@ -118,7 +118,7 @@ export class KoaInstrumentation extends BasePlugin<typeof koa> {
     this._logger.debug('patching Koa middleware layer');
     return async (context: KoaContext, next: koa.Next) => {
       if (this._tracer.getCurrentSpan() === undefined) {
-        return middlewareLayer(context, next);
+        return await middlewareLayer(context, next);
       }
       const metadata = getMiddlewareMetadata(
         context,
@@ -129,13 +129,11 @@ export class KoaInstrumentation extends BasePlugin<typeof koa> {
       const span = this._tracer.startSpan(metadata.name, {
         attributes: metadata.attributes,
       });
-      const startTime = hrTime();
-
       const result = await middlewareLayer(context, next);
-      span.end(startTime);
+      span.end();
       return result;
     };
   }
 }
 
-export const koaInstrumentation = new KoaInstrumentation(KoaComponentName);
+export const plugin = new KoaInstrumentation(KoaComponentName);
