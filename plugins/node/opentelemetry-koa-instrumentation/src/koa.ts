@@ -26,7 +26,6 @@ import {
 } from './types';
 import { VERSION } from './version';
 import { getMiddlewareMetadata } from './utils';
-import Router = require('@koa/router');
 
 /** Koa instrumentation for OpenTelemetry */
 export class KoaInstrumentation extends BasePlugin<typeof koa> {
@@ -101,8 +100,7 @@ export class KoaInstrumentation extends BasePlugin<typeof koa> {
     const router = dispatchLayer.router;
 
     const routesStack = router?.stack ?? [];
-    for (let i = 0; i < routesStack.length; i++) {
-      const pathLayer: Router.Layer = routesStack[i];
+    for (const pathLayer of routesStack) {
       const path = pathLayer.path;
       const pathStack = pathLayer.stack;
       for (let j = 0; j < pathStack.length; j++) {

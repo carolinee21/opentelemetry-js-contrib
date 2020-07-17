@@ -80,8 +80,7 @@ describe('Koa Instrumentation - Router Tests', () => {
 
       const router = new KoaRouter();
       router.get('/post/:id', ctx => {
-        const id = ctx.params.id;
-        ctx.body = 'Post id: ' + id;
+        ctx.body = `Post id: ${ctx.params.id}`;
       });
 
       app.use(router.routes());
