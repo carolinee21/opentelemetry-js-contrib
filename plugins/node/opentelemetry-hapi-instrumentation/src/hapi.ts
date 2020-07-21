@@ -15,11 +15,12 @@
  */
 
 import { BasePlugin } from '@opentelemetry/core';
-import * as Hapi from '@hapi/hapi';
+import type * as Hapi from '@hapi/hapi';
 import { VERSION } from './version';
-import { HapiComponentName } from './types';
+import { HapiComponentName, HapiServerRouteInput } from './types';
 
 import * as shimmer from 'shimmer';
+import { getRouteMetadata } from './utils';
 
 /** Hapi instrumentation for OpenTelemetry */
 export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
@@ -58,25 +59,65 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     return function server(this: Hapi.Server, opts?: Hapi.ServerOptions) {
       const newServer = original.apply(this, [opts]);
 
-      shimmer.wrap(newServer, 'route', plugin._getServerRoutePatch.bind(this));
-
+      shimmer.wrap(
+        newServer,
+        'route',
+        plugin._getServerRoutePatch.bind(plugin)
+      );
       return newServer;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
+    };
   }
 
-  private _getServerRoutePatch(
-    original: (route: Hapi.ServerRoute | Hapi.ServerRoute[]) => void
-  ): (route: Hapi.ServerRoute | Hapi.ServerRoute[]) => void {
-    console.log('well then');
+  private _getServerRoutePatch(original: HapiServerRouteInput) {
+    const plugin = this;
+
     return function route(
       this: Hapi.Server,
       route: Hapi.ServerRoute | Hapi.ServerRoute[]
     ): void {
       console.log('test');
+
+      if (Array.isArray(route)) {
+        console.log('multiple routes: ' + route.length);
+        for (let i = 0; i < route.length; i++) {
+          const newRoute = plugin._wrapRoute.call(plugin, route[i]);
+          route[i] = newRoute;
+        }
+      } else {
+        console.log('one route');
+        route = plugin._wrapRoute.call(plugin, route);
+      }
+
       original.apply(this, [route]);
     };
+  }
+
+  private _wrapRoute(route: Hapi.ServerRoute): Hapi.ServerRoute {
+    const plugin = this;
+
+    if (typeof route.handler === 'function') {
+      const handler = route.handler as Hapi.Lifecycle.Method;
+      console.log('typeof handler = function');
+      const newHandler: Hapi.Lifecycle.Method = async function (
+        request: Hapi.Request,
+        h: Hapi.ResponseToolkit,
+        err?: Error | undefined
+      ) {
+        console.log('starting span');
+        const metadata = getRouteMetadata(route);
+
+        const span = plugin._tracer.startSpan(metadata.name, {
+          attributes: metadata.attributes,
+        });
+        const res = await handler(request, h, err);
+        span.end();
+
+        return res;
+      };
+      route.handler = newHandler;
+    }
+
+    return route;
   }
 }
 

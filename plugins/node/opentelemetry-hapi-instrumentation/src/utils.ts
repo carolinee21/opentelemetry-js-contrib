@@ -13,19 +13,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+import { Attributes } from '@opentelemetry/api';
+import { HttpAttribute } from '@opentelemetry/semantic-conventions';
 import type * as Hapi from '@hapi/hapi';
+import { AttributeNames, HapiLayerType } from './types';
 
-export const HapiComponentName = '@hapi/hapi';
-
-export type HapiServerRouteInput = (
-  route: Hapi.ServerRoute | Hapi.ServerRoute[]
-) => void;
-
-export enum AttributeNames {
-  HAPI_TYPE = 'hapi.type',
-}
-
-export enum HapiLayerType {
-  ROUTER = 'router',
-  PLUGIN = 'plugin',
-}
+export const getRouteMetadata = (
+  route: Hapi.ServerRoute
+): {
+  attributes: Attributes;
+  name: string;
+} => {
+  return {
+    attributes: {
+      [HttpAttribute.HTTP_ROUTE]: route.path,
+      [HttpAttribute.HTTP_METHOD]: route.method,
+      [AttributeNames.HAPI_TYPE]: HapiLayerType.ROUTER,
+    },
+    name: `router - ${route.path}`,
+  };
+};
