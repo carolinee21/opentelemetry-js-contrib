@@ -32,7 +32,6 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
 
   protected patch(): typeof Hapi {
     this._logger.debug('Patching hapi');
-    console.log('patching hapi');
     if (this._moduleExports === undefined || this._moduleExports === null) {
       return this._moduleExports;
     }
@@ -46,9 +45,7 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
   }
 
   protected unpatch(): void {
-    const serverProto = this._moduleExports.Server.prototype;
-
-    shimmer.unwrap(serverProto, 'route');
+    shimmer.unwrap(this._moduleExports, 'server');
   }
 
   private _getServerPatch(
@@ -75,16 +72,12 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
       this: Hapi.Server,
       route: Hapi.ServerRoute | Hapi.ServerRoute[]
     ): void {
-      console.log('test');
-
       if (Array.isArray(route)) {
-        console.log('multiple routes: ' + route.length);
         for (let i = 0; i < route.length; i++) {
           const newRoute = plugin._wrapRoute.call(plugin, route[i]);
           route[i] = newRoute;
         }
       } else {
-        console.log('one route');
         route = plugin._wrapRoute.call(plugin, route);
       }
 
@@ -97,15 +90,15 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
 
     if (typeof route.handler === 'function') {
       const handler = route.handler as Hapi.Lifecycle.Method;
-      console.log('typeof handler = function');
       const newHandler: Hapi.Lifecycle.Method = async function (
         request: Hapi.Request,
         h: Hapi.ResponseToolkit,
         err?: Error | undefined
       ) {
-        console.log('starting span');
+        if (plugin._tracer.getCurrentSpan() === undefined) {
+          return await handler(request, h, err);
+        }
         const metadata = getRouteMetadata(route);
-
         const span = plugin._tracer.startSpan(metadata.name, {
           attributes: metadata.attributes,
         });
@@ -115,8 +108,10 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         return res;
       };
       route.handler = newHandler;
+    } else {
+      console.log('Non function handler: ');
+      console.log(typeof route.handler);
     }
-
     return route;
   }
 }
