@@ -35,11 +35,20 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     if (this._moduleExports === undefined || this._moduleExports === null) {
       return this._moduleExports;
     }
+    
     shimmer.wrap(
       this._moduleExports,
       'server',
       this._getServerPatch.bind(this)
     );
+
+    shimmer.wrap(
+      this._moduleExports,
+      'Server',
+      this._getBIGServerPatch.bind(this)
+    );
+
+    
 
     return this._moduleExports;
   }
@@ -48,6 +57,27 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     shimmer.unwrap(this._moduleExports, 'server');
   }
 
+
+   private _getBIGServerPatch(
+      original: typeof Hapi.Server
+  
+    ) {
+      const plugin = this;
+  
+     //return function Server(this: Hapi.Server) {
+        //const newServer = original.apply(this, []);
+        console.log(original)
+        var og = original.prototype;
+        console.log(og);
+        shimmer.wrap(
+          og,
+          'route',
+          plugin._getServerRoutePatch.bind(plugin)
+        );
+        return original;
+      //};
+    }
+
   private _getServerPatch(
     original: (options?: Hapi.ServerOptions) => Hapi.Server
   ) {
@@ -55,23 +85,47 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
 
     return function server(this: Hapi.Server, opts?: Hapi.ServerOptions) {
       const newServer = original.apply(this, [opts]);
+      console.log("wrapping server obj");
 
       shimmer.wrap(
         newServer,
         'route',
         plugin._getServerRoutePatch.bind(plugin)
       );
+
+      // shimmer.wrap(
+      //   newServer,
+      //   'register',
+      //   plugin._getServerRegisterPatch.bind(plugin)
+      // );
+
       return newServer;
     };
   }
 
+  // private _getServerRegisterPatch(original: any) {
+  //   const instrumentation = this;
+
+  //   return async function route(
+  //     plugins: Hapi.ServerRegisterPluginObjectArray<any, any, any, any, any, any, any>,
+  //     options?: Hapi.ServerRegisterOptions | undefined
+  //   ) {
+      
+
+  //     await original.apply(plugin, [options]);
+  //   };
+  // }
+
   private _getServerRoutePatch(original: HapiServerRouteInput) {
     const plugin = this;
+    console.log("gsp");
 
     return function route(
       this: Hapi.Server,
       route: Hapi.ServerRoute | Hapi.ServerRoute[]
     ): void {
+      console.log("server.route called");
+
       if (Array.isArray(route)) {
         for (let i = 0; i < route.length; i++) {
           const newRoute = plugin._wrapRoute.call(plugin, route[i]);
@@ -87,7 +141,7 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
 
   private _wrapRoute(route: Hapi.ServerRoute): Hapi.ServerRoute {
     const plugin = this;
-
+    console.log("wrapping route")
     if (typeof route.handler === 'function') {
       const handler = route.handler as Hapi.Lifecycle.Method;
       const newHandler: Hapi.Lifecycle.Method = async function (
@@ -95,7 +149,9 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         h: Hapi.ResponseToolkit,
         err?: Error | undefined
       ) {
+        console.log("yes");
         if (plugin._tracer.getCurrentSpan() === undefined) {
+          console.log("no curr span");
           return await handler(request, h, err);
         }
         const metadata = getRouteMetadata(route);
