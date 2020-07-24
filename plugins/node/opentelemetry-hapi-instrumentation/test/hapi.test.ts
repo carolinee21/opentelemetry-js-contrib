@@ -96,6 +96,50 @@ describe('Hapi Instrumentation - Core Tests', () => {
       });
     });
 
+    it('should instrument the Hapi.Server (note: uppercase) method', async () => {
+      const rootSpan = tracer.startSpan('rootSpan');
+      server = new hapi.Server({
+        port: 3000,
+        host: 'localhost',
+      });
+
+      server.route({
+        method: 'GET',
+        path: '/',
+        handler: (request, h) => {
+          return 'Hello World!';
+        },
+      });
+
+      await server.start();
+      assert.strictEqual(memoryExporter.getFinishedSpans().length, 0);
+
+      await tracer.withSpan(rootSpan, async () => {
+        const res = await server.inject({
+          method: 'GET',
+          url: '/',
+        });
+        assert.strictEqual(res.statusCode, 200);
+
+        rootSpan.end();
+        assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 2);
+
+        const requestHandlerSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name.includes('router'));
+        assert.notStrictEqual(requestHandlerSpan, undefined);
+        assert.strictEqual(
+          requestHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
+          HapiLayerType.ROUTER
+        );
+
+        const exportedRootSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name === 'rootSpan');
+        assert.notStrictEqual(exportedRootSpan, undefined);
+      });
+    });
+
     it('should create child spans for multiple routes', async () => {
       const rootSpan = tracer.startSpan('rootSpan');
       server.route([
