@@ -39,7 +39,7 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     shimmer.massWrap(
       [this._moduleExports],
       ['server', 'Server'],
-      this._getServerPatch.bind(this) as any
+      this._getServerPatch.bind(this) as any // recent
     );
     return this._moduleExports;
   }
@@ -49,7 +49,7 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
   }
 
   private _getServerPatch(
-    original: any // (options?: Hapi.ServerOptions) => Hapi.Server // recent change to any
+    original: (options?: Hapi.ServerOptions) => Hapi.Server // recent
   ) {
     const plugin = this;
     return function server(this: Hapi.Server, opts?: Hapi.ServerOptions) {
@@ -80,7 +80,7 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
       // plugin: any, // Hapi.ServerRegisterPluginObject<any>,
       // options?:  Hapi.ServerRegisterOptions | undefined
       this: Hapi.Server,
-      myPlugin: any,
+      myPlugin: any, // Hapi.ServerRegisterPluginObject<any>, // recent
       ...args: any
     ) {
       if (Array.isArray(myPlugin)) {
@@ -163,13 +163,13 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     console.log('wrapping true register');
     if (typeof plugin.register === 'function') {
       const oldHandler = plugin.register;
-      const newHandler = async function (server: Hapi.Server, ...args: any) {
+      const newHandler = async function (server: Hapi.Server, options: any) {
         shimmer.wrap(
           server,
           'route',
           instrumentation._getServerRoutePatch.bind(instrumentation)
         );
-        const res = await oldHandler(server, ...args);
+        const res = await oldHandler(server, options);
         return res;
       };
       plugin.register = newHandler;

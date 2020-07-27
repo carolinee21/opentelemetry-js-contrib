@@ -51,9 +51,13 @@ describe('Hapi Instrumentation - Core Tests', () => {
   });
 
   afterEach(async () => {
-    server.stop();
+    await server.stop();
     memoryExporter.reset();
     context.disable();
+  });
+
+  after(() => {
+    plugin.disable();
   });
 
   describe('Instrumenting Hapi Routes', () => {
@@ -193,6 +197,45 @@ describe('Hapi Instrumentation - Core Tests', () => {
         assert.notStrictEqual(secondHandlerSpan, undefined);
         assert.strictEqual(
           secondHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
+          HapiLayerType.ROUTER
+        );
+
+        const exportedRootSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name === 'rootSpan');
+        assert.notStrictEqual(exportedRootSpan, undefined);
+      });
+    });
+
+    it('should access route parameters and add to span', async () => {
+      const rootSpan = tracer.startSpan('rootSpan');
+      server.route({
+        method: 'GET',
+        path: '/users/{userId}',
+        handler: (request, h) => {
+          return `Hello ${request.params.userId}`;
+        },
+      });
+
+      await server.start();
+      assert.strictEqual(memoryExporter.getFinishedSpans().length, 0);
+
+      await tracer.withSpan(rootSpan, async () => {
+        const res = await server.inject({
+          method: 'GET',
+          url: '/users/1',
+        });
+        assert.strictEqual(res.statusCode, 200);
+
+        rootSpan.end();
+        assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 2);
+
+        const requestHandlerSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name.includes('router - /users/{userId}'));
+        assert.notStrictEqual(requestHandlerSpan, undefined);
+        assert.strictEqual(
+          requestHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
           HapiLayerType.ROUTER
         );
 
