@@ -165,10 +165,7 @@ describe('Hapi Instrumentation - Plugin Tests', () => {
         assert.strictEqual(res2.statusCode, 200);
 
         rootSpan.end();
-        console.log('xxxxxxxxx');
-        console.log(memoryExporter.getFinishedSpans());
 
-        // finds 4
         assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 3);
 
         const firstHandlerSpan = memoryExporter
@@ -182,6 +179,68 @@ describe('Hapi Instrumentation - Plugin Tests', () => {
         const secondHandlerSpan = memoryExporter
           .getFinishedSpans()
           .find(span => span.name.includes('router - /hello'));
+        assert.notStrictEqual(secondHandlerSpan, undefined);
+        assert.strictEqual(
+          secondHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
+          HapiLayerType.ROUTER
+        );
+
+        const exportedRootSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name === 'rootSpan');
+        assert.notStrictEqual(exportedRootSpan, undefined);
+      });
+    });
+
+    it('should instrument multiple versions of the same plugin just once', async () => {
+      const rootSpan = tracer.startSpan('rootSpan');
+
+      await server.register([
+        {
+          plugin: multipleVersionPlugin,
+          options: {
+            name: 'world',
+            path: 'test',
+          },
+        },
+        {
+          plugin: multipleVersionPlugin,
+          options: {
+            name: 'world',
+            path: 'test2',
+          },
+        },
+      ]);
+      await server.start();
+      assert.strictEqual(memoryExporter.getFinishedSpans().length, 0);
+
+      await tracer.withSpan(rootSpan, async () => {
+        const res1 = await server.inject({
+          method: 'GET',
+          url: '/test',
+        });
+        assert.strictEqual(res1.statusCode, 200);
+        const res2 = await server.inject({
+          method: 'GET',
+          url: '/test2',
+        });
+        assert.strictEqual(res2.statusCode, 200);
+
+        rootSpan.end();
+
+        assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 3);
+
+        const firstHandlerSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name.includes('router - /test'));
+        assert.notStrictEqual(firstHandlerSpan, undefined);
+        assert.strictEqual(
+          firstHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
+          HapiLayerType.ROUTER
+        );
+        const secondHandlerSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name.includes('router - /test2'));
         assert.notStrictEqual(secondHandlerSpan, undefined);
         assert.strictEqual(
           secondHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],

@@ -17,9 +17,23 @@ import type * as Hapi from '@hapi/hapi';
 
 export const HapiComponentName = '@hapi/hapi';
 
-export type HapiServerRouteInput = (
-  route: Hapi.ServerRoute | Hapi.ServerRoute[]
-) => void;
+/**
+ * This symbol is used to mark a Hapi route handler or plugin handler as
+ * already patched, since its possible to use these handlers multiple times
+ * i.e. when allowing multiple versions of one plugin, or when registering a plugin
+ * multiple times on different servers, like in testing
+ */
+export const handlerPatched: unique symbol = Symbol('hapi-handler-patched');
+
+export type HapiServerRouteInputMethod = (route: HapiServerRouteInput) => void;
+
+export type HapiServerRouteInput =
+  | PatchableServerRoute
+  | PatchableServerRoute[];
+
+export type PatchableServerRoute = Hapi.ServerRoute & {
+  [handlerPatched]?: boolean;
+};
 
 export enum AttributeNames {
   HAPI_TYPE = 'hapi.type',

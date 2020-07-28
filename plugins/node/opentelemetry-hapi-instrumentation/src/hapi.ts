@@ -17,8 +17,13 @@
 import { BasePlugin } from '@opentelemetry/core';
 import type * as Hapi from '@hapi/hapi';
 import { VERSION } from './version';
-import { HapiComponentName, HapiServerRouteInput } from './types';
-
+import {
+  HapiComponentName,
+  HapiServerRouteInput,
+  handlerPatched,
+  PatchableServerRoute,
+  HapiServerRouteInputMethod,
+} from './types';
 import * as shimmer from 'shimmer';
 import { getRouteMetadata } from './utils';
 
@@ -54,7 +59,6 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     const plugin = this;
     return function server(this: Hapi.Server, opts?: Hapi.ServerOptions) {
       const newServer: Hapi.Server = original.apply(this, [opts]);
-      console.log('wrapping server obj');
 
       shimmer.wrap(
         newServer,
@@ -67,7 +71,6 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         'register',
         plugin._getServerRegisterPatch.bind(plugin)
       );
-
       return newServer;
     };
   }
@@ -103,15 +106,13 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     };
   }
 
-  private _getServerRoutePatch(original: HapiServerRouteInput) {
+  private _getServerRoutePatch(original: HapiServerRouteInputMethod) {
     const instrumentation = this;
 
     return function route(
       this: Hapi.Server,
-      route: Hapi.ServerRoute | Hapi.ServerRoute[]
+      route: HapiServerRouteInput
     ): void {
-      console.log('server.route called');
-
       if (Array.isArray(route)) {
         for (let i = 0; i < route.length; i++) {
           const newRoute = instrumentation._wrapRoute.call(
@@ -127,10 +128,11 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     };
   }
 
-  private _wrapRoute(route: Hapi.ServerRoute): Hapi.ServerRoute {
+  private _wrapRoute(route: PatchableServerRoute): PatchableServerRoute {
     const instrumentation = this;
-    console.log('wrapping route');
     if (typeof route.handler === 'function') {
+      if (route[handlerPatched] === true) return route;
+      route[handlerPatched] = true;
       const handler = route.handler as Hapi.Lifecycle.Method;
       const newHandler: Hapi.Lifecycle.Method = async function (
         request: Hapi.Request,
@@ -138,7 +140,6 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         err?: Error | undefined
       ) {
         if (instrumentation._tracer.getCurrentSpan() === undefined) {
-          console.log('no curr span');
           return await handler(request, h, err);
         }
         const metadata = getRouteMetadata(route);
@@ -160,7 +161,6 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
 
   private _wrapRegisterHandler(plugin: any): any {
     const instrumentation = this;
-    console.log('wrapping true register');
     if (typeof plugin.register === 'function') {
       const oldHandler = plugin.register;
       const newHandler = async function (server: Hapi.Server, options: any) {

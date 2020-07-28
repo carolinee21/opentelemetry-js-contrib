@@ -296,7 +296,6 @@ describe('Hapi Instrumentation - Core Tests', () => {
           url: '/',
         });
         assert.strictEqual(res.statusCode, 200);
-
         rootSpan.end();
         assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 1);
         assert.notStrictEqual(memoryExporter.getFinishedSpans()[0], undefined);
