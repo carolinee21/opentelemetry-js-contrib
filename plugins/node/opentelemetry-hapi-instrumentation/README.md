@@ -15,7 +15,7 @@ For automatic instrumentation see the
 npm install --save @opentelemetry/hapi-instrumentation
 ```
 ### Supported Versions
-TODO
+ - @hapi/hapi `^17.0.0`
 
 ## Usage
 
@@ -27,7 +27,7 @@ const { NodeTracerProvider } = require('@opentelemetry/node');
 
 const provider = new NodeTracerProvider({
   plugins: {
-    hapi: {
+    '@hapi/hapi': {
       enabled: true,
       // You may use a package name or absolute path to the file.
       path: '@opentelemetry/hapi-instrumentation',
@@ -43,7 +43,10 @@ const { NodeTracerProvider } = require('@opentelemetry/node');
 const provider = new NodeTracerProvider();
 ```
 
-<!-- TODO: See [examples/hapi](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/master/examples/hapi) for a short example using Hapi --> 
+See [examples/hapi](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/master/examples/hapi) for a short example using Hapi
+
+## Hapi Instrumentation Support
+This package provides automatic tracing for hapi server routes defined either directly or via a plugin.
 
 ## Useful links
 - For more information on OpenTelemetry, visit: <https://opentelemetry.io/>
