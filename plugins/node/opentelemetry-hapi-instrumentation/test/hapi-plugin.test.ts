@@ -117,11 +117,15 @@ describe('Hapi Instrumentation - Plugin Tests', () => {
 
         const requestHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('router - /test'));
+          .find(span => span.name === 'multipleVersionPlugin: route - /test');
         assert.notStrictEqual(requestHandlerSpan, undefined);
         assert.strictEqual(
           requestHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
-          HapiLayerType.ROUTER
+          HapiLayerType.PLUGIN
+        );
+        assert.strictEqual(
+          requestHandlerSpan?.attributes[AttributeNames.PLUGIN_NAME],
+          'multipleVersionPlugin'
         );
 
         const exportedRootSpan = memoryExporter
@@ -170,19 +174,27 @@ describe('Hapi Instrumentation - Plugin Tests', () => {
 
         const firstHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('router - /test'));
+          .find(span => span.name === 'multipleVersionPlugin: route - /test');
         assert.notStrictEqual(firstHandlerSpan, undefined);
         assert.strictEqual(
           firstHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
-          HapiLayerType.ROUTER
+          HapiLayerType.PLUGIN
+        );
+        assert.strictEqual(
+          firstHandlerSpan?.attributes[AttributeNames.PLUGIN_NAME],
+          'multipleVersionPlugin'
         );
         const secondHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('router - /hello'));
+          .find(span => span.name === 'simplePlugin: route - /hello');
         assert.notStrictEqual(secondHandlerSpan, undefined);
         assert.strictEqual(
           secondHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
-          HapiLayerType.ROUTER
+          HapiLayerType.PLUGIN
+        );
+        assert.strictEqual(
+          secondHandlerSpan?.attributes[AttributeNames.PLUGIN_NAME],
+          'simplePlugin'
         );
 
         const exportedRootSpan = memoryExporter
@@ -232,19 +244,27 @@ describe('Hapi Instrumentation - Plugin Tests', () => {
 
         const firstHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('router - /test'));
+          .find(span => span.name === 'multipleVersionPlugin: route - /test');
         assert.notStrictEqual(firstHandlerSpan, undefined);
         assert.strictEqual(
           firstHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
-          HapiLayerType.ROUTER
+          HapiLayerType.PLUGIN
+        );
+        assert.strictEqual(
+          firstHandlerSpan?.attributes[AttributeNames.PLUGIN_NAME],
+          'multipleVersionPlugin'
         );
         const secondHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('router - /test2'));
+          .find(span => span.name === 'multipleVersionPlugin: route - /test2');
         assert.notStrictEqual(secondHandlerSpan, undefined);
         assert.strictEqual(
           secondHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
-          HapiLayerType.ROUTER
+          HapiLayerType.PLUGIN
+        );
+        assert.strictEqual(
+          secondHandlerSpan?.attributes[AttributeNames.PLUGIN_NAME],
+          'multipleVersionPlugin'
         );
 
         const exportedRootSpan = memoryExporter

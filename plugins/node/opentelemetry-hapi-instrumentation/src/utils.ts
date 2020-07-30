@@ -19,18 +19,38 @@ import { HttpAttribute } from '@opentelemetry/semantic-conventions';
 import type * as Hapi from '@hapi/hapi';
 import { AttributeNames, HapiLayerType } from './types';
 
+export function getPluginName<T>(plugin: Hapi.Plugin<T>): string {
+  if ((plugin as Hapi.PluginNameVersion).name) {
+    return (plugin as Hapi.PluginNameVersion).name;
+  } else {
+    return (plugin as Hapi.PluginPackage).pkg.name;
+  }
+}
+
 export const getRouteMetadata = (
-  route: Hapi.ServerRoute
+  route: Hapi.ServerRoute,
+  pluginName?: string
 ): {
   attributes: Attributes;
   name: string;
 } => {
+  if (pluginName) {
+    return {
+      attributes: {
+        [HttpAttribute.HTTP_ROUTE]: route.path,
+        [HttpAttribute.HTTP_METHOD]: route.method,
+        [AttributeNames.HAPI_TYPE]: HapiLayerType.PLUGIN,
+        [AttributeNames.PLUGIN_NAME]: pluginName,
+      },
+      name: `${pluginName}: route - ${route.path}`,
+    };
+  }
   return {
     attributes: {
       [HttpAttribute.HTTP_ROUTE]: route.path,
       [HttpAttribute.HTTP_METHOD]: route.method,
       [AttributeNames.HAPI_TYPE]: HapiLayerType.ROUTER,
     },
-    name: `router - ${route.path}`,
+    name: `route - ${route.path}`,
   };
 };

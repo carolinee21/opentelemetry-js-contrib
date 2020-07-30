@@ -27,7 +27,7 @@ import {
   RegisterFunction,
 } from './types';
 import * as shimmer from 'shimmer';
-import { getRouteMetadata } from './utils';
+import { getRouteMetadata, getPluginName } from './utils';
 
 /** Hapi instrumentation for OpenTelemetry */
 export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
@@ -75,11 +75,11 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     return function server(this: Hapi.Server, opts?: Hapi.ServerOptions) {
       const newServer: Hapi.Server = original.apply(this, [opts]);
 
-      shimmer.wrap(
-        newServer,
-        'route',
-        instrumentation._getServerRoutePatch.bind(instrumentation)
-      );
+      shimmer.wrap(newServer, 'route', original => {
+        return instrumentation._getServerRoutePatch.bind(instrumentation)(
+          original
+        );
+      });
       // Casting as any is necessary here due to multiple overloads on the Hapi.Server.register
       // function, which requires supporting a variety of different types of Plugin inputs
       shimmer.wrap(
@@ -112,9 +112,11 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     };
   }
 
-  private _getServerRoutePatch(original: HapiServerRouteInputMethod) {
+  private _getServerRoutePatch(
+    original: HapiServerRouteInputMethod,
+    pluginName?: string
+  ) {
     const instrumentation = this;
-
     return function route(
       this: Hapi.Server,
       route: HapiServerRouteInput
@@ -123,18 +125,26 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         for (let i = 0; i < route.length; i++) {
           const newRoute = instrumentation._wrapRoute.call(
             instrumentation,
-            route[i]
+            route[i],
+            pluginName
           );
           route[i] = newRoute;
         }
       } else {
-        route = instrumentation._wrapRoute.call(instrumentation, route);
+        route = instrumentation._wrapRoute.call(
+          instrumentation,
+          route,
+          pluginName
+        );
       }
       original.apply(this, [route]);
     };
   }
 
-  private _wrapRoute(route: PatchableServerRoute): PatchableServerRoute {
+  private _wrapRoute(
+    route: PatchableServerRoute,
+    pluginName?: string
+  ): PatchableServerRoute {
     const instrumentation = this;
     if (route[handlerPatched] === true) return route;
     route[handlerPatched] = true;
@@ -148,7 +158,7 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         if (instrumentation._tracer.getCurrentSpan() === undefined) {
           return await handler(request, h, err);
         }
-        const metadata = getRouteMetadata(route);
+        const metadata = getRouteMetadata(route, pluginName);
         const span = instrumentation._tracer.startSpan(metadata.name, {
           attributes: metadata.attributes,
         });
@@ -164,14 +174,16 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
 
   private _wrapRegisterHandler<T>(plugin: Hapi.Plugin<T>): void {
     const instrumentation = this;
+    const pluginName = getPluginName(plugin);
     if (typeof plugin.register === 'function') {
       const oldHandler = plugin.register;
       const newHandler = async function (server: Hapi.Server, options: T) {
-        shimmer.wrap(
-          server,
-          'route',
-          instrumentation._getServerRoutePatch.bind(instrumentation)
-        );
+        shimmer.wrap(server, 'route', original => {
+          return instrumentation._getServerRoutePatch.bind(instrumentation)(
+            original,
+            pluginName
+          );
+        });
         const res = await oldHandler(server, options);
         return res;
       };

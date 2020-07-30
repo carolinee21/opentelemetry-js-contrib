@@ -86,7 +86,7 @@ describe('Hapi Instrumentation - Core Tests', () => {
 
         const requestHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('router'));
+          .find(span => span.name === 'route - /');
         assert.notStrictEqual(requestHandlerSpan, undefined);
         assert.strictEqual(
           requestHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
@@ -130,7 +130,7 @@ describe('Hapi Instrumentation - Core Tests', () => {
 
         const requestHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('router'));
+          .find(span => span.name === 'route - /');
         assert.notStrictEqual(requestHandlerSpan, undefined);
         assert.strictEqual(
           requestHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
@@ -184,7 +184,7 @@ describe('Hapi Instrumentation - Core Tests', () => {
 
         const firstHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('router - /first'));
+          .find(span => span.name === 'route - /first');
         assert.notStrictEqual(firstHandlerSpan, undefined);
         assert.strictEqual(
           firstHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
@@ -193,7 +193,7 @@ describe('Hapi Instrumentation - Core Tests', () => {
 
         const secondHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('router - /second'));
+          .find(span => span.name === 'route - /second');
         assert.notStrictEqual(secondHandlerSpan, undefined);
         assert.strictEqual(
           secondHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
@@ -232,7 +232,7 @@ describe('Hapi Instrumentation - Core Tests', () => {
 
         const requestHandlerSpan = memoryExporter
           .getFinishedSpans()
-          .find(span => span.name.includes('router - /users/{userId}'));
+          .find(span => span.name === 'route - /users/{userId}');
         assert.notStrictEqual(requestHandlerSpan, undefined);
         assert.strictEqual(
           requestHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],

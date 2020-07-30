@@ -46,6 +46,7 @@ export type RegisterFunction<T> = (
 
 export enum AttributeNames {
   HAPI_TYPE = 'hapi.type',
+  PLUGIN_NAME = 'hapi.plugin.name',
 }
 
 export enum HapiLayerType {
