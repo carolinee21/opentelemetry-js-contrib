@@ -35,6 +35,15 @@ export type PatchableServerRoute = Hapi.ServerRoute & {
   [handlerPatched]?: boolean;
 };
 
+export type HapiPluginInput<T> =
+  | Hapi.ServerRegisterPluginObject<T>
+  | Array<Hapi.ServerRegisterPluginObject<T>>;
+
+export type RegisterFunction<T> = (
+  plugin: HapiPluginInput<T>,
+  options?: Hapi.ServerRegisterOptions
+) => Promise<void>;
+
 export enum AttributeNames {
   HAPI_TYPE = 'hapi.type',
 }

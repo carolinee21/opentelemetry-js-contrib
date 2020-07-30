@@ -23,6 +23,8 @@ import {
   handlerPatched,
   PatchableServerRoute,
   HapiServerRouteInputMethod,
+  HapiPluginInput,
+  RegisterFunction,
 } from './types';
 import * as shimmer from 'shimmer';
 import { getRouteMetadata } from './utils';
@@ -41,11 +43,24 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
       return this._moduleExports;
     }
 
-    shimmer.massWrap(
-      [this._moduleExports],
-      ['server', 'Server'],
-      this._getServerPatch.bind(this) as any // recent
+    shimmer.wrap(
+      this._moduleExports,
+      'server',
+      this._getServerPatch.bind(this)
     );
+
+    // Casting as any is necessary here due to an issue with the @types/hapi__hapi
+    // type definition for Hapi.Server. Hapi.Server (note the uppercase) can also function
+    // as a factory function, similarly to Hapi.server, and so should also be supported and
+    // instrumented. This is an issue with the DefinitelyTyped repo.
+    // Function is defined at: https://github.com/hapijs/hapi/blob/master/lib/index.js#L9
+    shimmer.wrap(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this._moduleExports as any,
+      'Server',
+      this._getServerPatch.bind(this)
+    );
+
     return this._moduleExports;
   }
 
@@ -56,53 +71,44 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
   private _getServerPatch(
     original: (options?: Hapi.ServerOptions) => Hapi.Server // recent
   ) {
-    const plugin = this;
+    const instrumentation = this;
     return function server(this: Hapi.Server, opts?: Hapi.ServerOptions) {
       const newServer: Hapi.Server = original.apply(this, [opts]);
 
       shimmer.wrap(
         newServer,
         'route',
-        plugin._getServerRoutePatch.bind(plugin)
+        instrumentation._getServerRoutePatch.bind(instrumentation)
       );
-
+      // Casting as any is necessary here due to multiple overloads on the Hapi.Server.register
+      // function, which requires supporting a variety of different types of Plugin inputs
       shimmer.wrap(
         newServer,
         'register',
-        plugin._getServerRegisterPatch.bind(plugin)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        instrumentation._getServerRegisterPatch.bind(instrumentation) as any
       );
       return newServer;
     };
   }
 
-  private _getServerRegisterPatch(original: any) {
+  private _getServerRegisterPatch<T>(
+    original: RegisterFunction<T>
+  ): RegisterFunction<T> {
     const instrumentation = this;
-
-    //return original;
     return async function register(
-      // plugin: any, // Hapi.ServerRegisterPluginObject<any>,
-      // options?:  Hapi.ServerRegisterOptions | undefined
       this: Hapi.Server,
-      myPlugin: any, // Hapi.ServerRegisterPluginObject<any>, // recent
-      ...args: any
+      pluginInput: HapiPluginInput<T>,
+      options?: Hapi.ServerRegisterOptions
     ) {
-      if (Array.isArray(myPlugin)) {
-        for (let i = 0; i < myPlugin.length; i++) {
-          if (!myPlugin[i].plugin) {
-            console.log('Error: no plugin obj');
-            console.log(myPlugin[i]);
-          }
-          instrumentation._wrapRegisterHandler(myPlugin[i].plugin);
+      if (Array.isArray(pluginInput)) {
+        for (let i = 0; i < pluginInput.length; i++) {
+          instrumentation._wrapRegisterHandler(pluginInput[i].plugin);
         }
       } else {
-        if (!myPlugin.plugin) {
-          console.log('Error: no plugin obj');
-          console.log(myPlugin);
-        }
-        instrumentation._wrapRegisterHandler(myPlugin.plugin);
+        instrumentation._wrapRegisterHandler(pluginInput.plugin);
       }
-      // await original(plugin.plugin, options);
-      await original.call(this, myPlugin);
+      await original.call(this, pluginInput, options);
     };
   }
 
@@ -130,9 +136,9 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
 
   private _wrapRoute(route: PatchableServerRoute): PatchableServerRoute {
     const instrumentation = this;
+    if (route[handlerPatched] === true) return route;
+    route[handlerPatched] = true;
     if (typeof route.handler === 'function') {
-      if (route[handlerPatched] === true) return route;
-      route[handlerPatched] = true;
       const handler = route.handler as Hapi.Lifecycle.Method;
       const newHandler: Hapi.Lifecycle.Method = async function (
         request: Hapi.Request,
@@ -152,18 +158,15 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         return res;
       };
       route.handler = newHandler;
-    } else {
-      console.log('Non function handler: ');
-      console.log(typeof route.handler);
     }
     return route;
   }
 
-  private _wrapRegisterHandler(plugin: any): any {
+  private _wrapRegisterHandler<T>(plugin: Hapi.Plugin<T>): void {
     const instrumentation = this;
     if (typeof plugin.register === 'function') {
       const oldHandler = plugin.register;
-      const newHandler = async function (server: Hapi.Server, options: any) {
+      const newHandler = async function (server: Hapi.Server, options: T) {
         shimmer.wrap(
           server,
           'route',
