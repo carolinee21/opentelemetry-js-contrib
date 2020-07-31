@@ -16,11 +16,7 @@ const BlogPostPlugin = {
   async register(serverClone) {
     console.log('Registering basic hapi plugin');
 
-    serverClone.route([{
-      method: 'GET',
-      path: '/run_test',
-      handler: runTest,
-    },
+    serverClone.route([
     {
       method: 'GET',
       path: '/post/new',
@@ -41,11 +37,9 @@ async function setUp() {
   server.route(
     {
       method: 'GET',
-      path: '/',
-      handler() {
-        return 'Hello world';
-      },
-    },
+      path: '/run_test',
+      handler: runTest,
+    }
   );
   await server.start();
   console.log('Server running on %s', server.info.uri);
@@ -77,13 +71,11 @@ async function showNewPost(request) {
 }
 
 function runTest(_, h) {
-  console.log('runTest');
   const currentSpan = tracer.getCurrentSpan();
   const { traceId } = currentSpan.context();
   console.log(`traceid: ${traceId}`);
   console.log(`Jaeger URL: http://localhost:16686/trace/${traceId}`);
   console.log(`Zipkin URL: http://localhost:9411/zipkin/traces/${traceId}`);
-  console.log(`All posts: ${posts}`);
   return h.redirect('/post/new');
 }
 
