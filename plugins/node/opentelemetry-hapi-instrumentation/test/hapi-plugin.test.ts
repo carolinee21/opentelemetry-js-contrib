@@ -91,6 +91,19 @@ describe('Hapi Instrumentation - Plugin Tests', () => {
     },
   };
 
+  const packagePlugin = {
+    pkg: require('./testPackage.json'),
+    register: async function (server: hapi.Server, options: any) {
+      server.route({
+        method: 'GET',
+        path: '/package',
+        handler: function (request, h) {
+          return 'Package';
+        },
+      });
+    },
+  };
+
   describe('Instrumenting Hapi Plugins', () => {
     it('should create spans for routes within single plugins', async () => {
       const rootSpan = tracer.startSpan('rootSpan');
@@ -265,6 +278,45 @@ describe('Hapi Instrumentation - Plugin Tests', () => {
         assert.strictEqual(
           secondHandlerSpan?.attributes[AttributeNames.PLUGIN_NAME],
           'multipleVersionPlugin'
+        );
+
+        const exportedRootSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name === 'rootSpan');
+        assert.notStrictEqual(exportedRootSpan, undefined);
+      });
+    });
+
+    it('should instrument package-based plugins', async () => {
+      const rootSpan = tracer.startSpan('rootSpan');
+
+      await server.register({
+        plugin: packagePlugin,
+      });
+      await server.start();
+      assert.strictEqual(memoryExporter.getFinishedSpans().length, 0);
+
+      await tracer.withSpan(rootSpan, async () => {
+        const res = await server.inject({
+          method: 'GET',
+          url: '/package',
+        });
+        assert.strictEqual(res.statusCode, 200);
+
+        rootSpan.end();
+        assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 2);
+
+        const requestHandlerSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name === 'plugin-by-package: route - /package');
+        assert.notStrictEqual(requestHandlerSpan, undefined);
+        assert.strictEqual(
+          requestHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
+          HapiLayerType.PLUGIN
+        );
+        assert.strictEqual(
+          requestHandlerSpan?.attributes[AttributeNames.PLUGIN_NAME],
+          'plugin-by-package'
         );
 
         const exportedRootSpan = memoryExporter
