@@ -2,12 +2,12 @@
 
 OpenTelemetry Hapi Instrumentation allows the user to automatically collect trace data and export them to the backend of choice (we can use Zipkin or Jaeger for this example), to give observability to distributed systems.
 
-This is a simple example that demonstrates tracing calls made in a Hapi application. The example
-shows key aspects of tracing such as
+This is a simple example that demonstrates tracing calls made in a Hapi application. The example shows key aspects of tracing such as
 - Root Span (on Client)
 - Child Span (on Client)
-- Span Events
 - Span Attributes
+- Instrumentation for routes and request extension points
+- Instrumentation of Hapi plugins
 
 ## Installation
 
