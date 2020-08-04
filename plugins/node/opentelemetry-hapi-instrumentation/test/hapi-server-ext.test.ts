@@ -261,6 +261,56 @@ describe('Hapi Instrumentation - Server.Ext Tests', () => {
       });
     });
 
+    it('instruments server extensions added within plugin', async () => {
+      const rootSpan = tracer.startSpan('rootSpan');
+
+      const simplePlugin = {
+        name: 'simplePlugin',
+        version: '1.0.0',
+        multiple: true,
+        register: async function (server: hapi.Server, options: any) {
+          server.ext('onRequest', async (request, h, err) => {
+            return h.continue;
+          });
+        },
+      };
+
+      await server.register({
+        plugin: simplePlugin,
+      });
+
+      await server.start();
+      assert.strictEqual(memoryExporter.getFinishedSpans().length, 0);
+
+      await tracer.withSpan(rootSpan, async () => {
+        const res = await server.inject({
+          method: 'GET',
+          url: '/test',
+        });
+        assert.strictEqual(res.statusCode, 200);
+
+        rootSpan.end();
+        assert.deepStrictEqual(memoryExporter.getFinishedSpans().length, 3);
+        const extHandlerSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name === 'simplePlugin: ext - onRequest');
+        assert.notStrictEqual(extHandlerSpan, undefined);
+        assert.strictEqual(
+          extHandlerSpan?.attributes[AttributeNames.HAPI_TYPE],
+          HapiLayerType.EXT
+        );
+        assert.strictEqual(
+          extHandlerSpan?.attributes[AttributeNames.EXT_TYPE],
+          'onRequest'
+        );
+
+        const exportedRootSpan = memoryExporter
+          .getFinishedSpans()
+          .find(span => span.name === 'rootSpan');
+        assert.notStrictEqual(exportedRootSpan, undefined);
+      });
+    });
+
     it('does not instrument Hapi.ServerExtPointFunction handlers', async () => {
       const rootSpan = tracer.startSpan('rootSpan');
       await tracer.withSpan(rootSpan, async () => {
