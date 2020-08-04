@@ -18,10 +18,10 @@ import type * as Hapi from '@hapi/hapi';
 export const HapiComponentName = '@hapi/hapi';
 
 /**
- * This symbol is used to mark a Hapi route handler or plugin handler as
+ * This symbol is used to mark a Hapi route handler or server extension handler as
  * already patched, since its possible to use these handlers multiple times
  * i.e. when allowing multiple versions of one plugin, or when registering a plugin
- * multiple times on different servers, like in testing
+ * multiple times on different servers.
  */
 export const handlerPatched: unique symbol = Symbol('hapi-handler-patched');
 
@@ -44,12 +44,28 @@ export type RegisterFunction<T> = (
   options?: Hapi.ServerRegisterOptions
 ) => Promise<void>;
 
+export type PatchableExtMethod = Hapi.Lifecycle.Method & {
+  [handlerPatched]?: boolean;
+};
+
 export enum AttributeNames {
   HAPI_TYPE = 'hapi.type',
   PLUGIN_NAME = 'hapi.plugin.name',
+  EXT_TYPE = 'server.ext.type',
 }
 
 export enum HapiLayerType {
   ROUTER = 'router',
   PLUGIN = 'plugin',
+  EXT = 'server.ext',
 }
+
+export const HapiLifecycleMethodNames = [
+  'onPreAuth',
+  'onCredentials',
+  'onPostAuth',
+  'onPreHandler',
+  'onPostHandler',
+  'onPreResponse',
+  'onRequest',
+];

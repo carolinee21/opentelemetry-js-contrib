@@ -17,7 +17,11 @@
 import { Attributes } from '@opentelemetry/api';
 import { HttpAttribute } from '@opentelemetry/semantic-conventions';
 import type * as Hapi from '@hapi/hapi';
-import { AttributeNames, HapiLayerType } from './types';
+import {
+  AttributeNames,
+  HapiLayerType,
+  HapiLifecycleMethodNames,
+} from './types';
 
 export function getPluginName<T>(plugin: Hapi.Plugin<T>): string {
   if ((plugin as Hapi.PluginNameVersion).name) {
@@ -26,6 +30,15 @@ export function getPluginName<T>(plugin: Hapi.Plugin<T>): string {
     return (plugin as Hapi.PluginPackage).pkg.name;
   }
 }
+
+export const isLifecycleExtType = (
+  variableToCheck: unknown
+): variableToCheck is Hapi.ServerRequestExtType => {
+  return (
+    typeof variableToCheck === 'string' &&
+    HapiLifecycleMethodNames.includes(variableToCheck)
+  );
+};
 
 export const getRouteMetadata = (
   route: Hapi.ServerRoute,
@@ -52,5 +65,31 @@ export const getRouteMetadata = (
       [AttributeNames.HAPI_TYPE]: HapiLayerType.ROUTER,
     },
     name: `route - ${route.path}`,
+  };
+};
+
+export const getExtMetadata = (
+  extPoint: Hapi.ServerRequestExtType,
+  pluginName?: string
+): {
+  attributes: Attributes;
+  name: string;
+} => {
+  if (pluginName) {
+    return {
+      attributes: {
+        [AttributeNames.EXT_TYPE]: extPoint,
+        [AttributeNames.HAPI_TYPE]: HapiLayerType.EXT,
+        [AttributeNames.PLUGIN_NAME]: pluginName,
+      },
+      name: `${pluginName}: ext - ${extPoint}`,
+    };
+  }
+  return {
+    attributes: {
+      [AttributeNames.EXT_TYPE]: extPoint,
+      [AttributeNames.HAPI_TYPE]: HapiLayerType.EXT,
+    },
+    name: `ext - ${extPoint}`,
   };
 };
