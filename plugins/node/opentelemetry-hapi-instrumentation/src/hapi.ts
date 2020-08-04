@@ -48,7 +48,7 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
    */
   protected patch(): typeof Hapi {
     this._logger.debug('Patching Hapi');
-    if (this._moduleExports === undefined || this._moduleExports === null) {
+    if (this._moduleExports == null) {
       return this._moduleExports;
     }
 
