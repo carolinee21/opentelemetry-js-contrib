@@ -46,7 +46,7 @@ const provider = new NodeTracerProvider();
 See [examples/hapi](https://github.com/open-telemetry/opentelemetry-js-contrib/tree/master/examples/hapi) for a short example using Hapi
 
 ## Hapi Instrumentation Support
-This package provides automatic tracing for hapi server routes defined either directly or via a plugin.
+This package provides automatic tracing for hapi server routes and [request lifecycle](https://github.com/hapijs/hapi/blob/master/API.md#request-lifecycle) extensions defined either directly or via a Hapi plugin.
 
 ## Useful links
 - For more information on OpenTelemetry, visit: <https://opentelemetry.io/>
