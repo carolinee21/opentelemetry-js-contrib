@@ -17,16 +17,16 @@ const BlogPostPlugin = {
     console.log('Registering basic hapi plugin');
 
     serverClone.route([
-    {
-      method: 'GET',
-      path: '/post/new',
-      handler: addPost,
-    },
-    {
-      method: 'GET',
-      path: '/post/{id}',
-      handler: showNewPost,
-    }]);
+      {
+        method: 'GET',
+        path: '/post/new',
+        handler: addPost,
+      },
+      {
+        method: 'GET',
+        path: '/post/{id}',
+        handler: showNewPost,
+      }]);
   },
 };
 
@@ -34,13 +34,22 @@ async function setUp() {
   await server.register(
     { plugin: BlogPostPlugin },
   );
+
   server.route(
     {
       method: 'GET',
       path: '/run_test',
       handler: runTest,
-    }
+    },
   );
+
+  server.ext('onRequest', async (request, h) => {
+    console.log('No-op Hapi lifecycle extension method');
+    const syntheticDelay = 50;
+    await new Promise((r) => setTimeout(r, syntheticDelay));
+    return h.continue;
+  });
+
   await server.start();
   console.log('Server running on %s', server.info.uri);
   console.log(`Listening on http://localhost:${PORT}`);
