@@ -1,7 +1,7 @@
 {
   "name": "hapi-example",
   "private": true,
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Example of Hapi auto-instrumentation with OpenTelemetry",
   "main": "index.js",
   "scripts": {
@@ -35,7 +35,7 @@
     "@opentelemetry/api": "^0.8.3",
     "@opentelemetry/exporter-jaeger": "^0.8.3",
     "@opentelemetry/exporter-zipkin": "^0.8.3",
-    "@opentelemetry/hapi-instrumentation": "../../plugins/node/opentelemetry-hapi-instrumentation",
+    "@opentelemetry/hapi-instrumentation": "^0.9.0",
     "@opentelemetry/node": "^0.8.3",
     "@opentelemetry/plugin-http": "^0.8.3",
     "@opentelemetry/tracing": "^0.8.3",
