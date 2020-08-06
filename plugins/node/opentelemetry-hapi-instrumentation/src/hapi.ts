@@ -180,11 +180,12 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
             | Hapi.ServerExtEventsRequestObject = eventsList[i];
           if (isLifecycleExtType(eventObj.type)) {
             const lifecycleEventObj = eventObj as Hapi.ServerExtEventsRequestObject;
-            lifecycleEventObj.method = instrumentation._wrapExtMethods(
+            const handler = instrumentation._wrapExtMethods(
               lifecycleEventObj.method,
               eventObj.type,
               pluginName
             );
+            lifecycleEventObj.method = handler;
             eventsList[i] = lifecycleEventObj;
           }
         }
@@ -194,11 +195,12 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
           | Hapi.ServerExtEventsRequestObject = args[0];
         if (isLifecycleExtType(eventObj.type)) {
           const lifecycleEventObj = eventObj as Hapi.ServerExtEventsRequestObject;
-          lifecycleEventObj.method = instrumentation._wrapExtMethods(
+          const handler = instrumentation._wrapExtMethods(
             lifecycleEventObj.method,
             eventObj.type,
             pluginName
           );
+          lifecycleEventObj.method = handler;
           args[0] = lifecycleEventObj;
         }
       } else {
@@ -233,11 +235,12 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
     ): void {
       if (Array.isArray(route)) {
         for (let i = 0; i < route.length; i++) {
-          route[i] = instrumentation._wrapRouteHandler.call(
+          const newRoute = instrumentation._wrapRouteHandler.call(
             instrumentation,
             route[i],
             pluginName
           );
+          route[i] = newRoute;
         }
       } else {
         route = instrumentation._wrapRouteHandler.call(
