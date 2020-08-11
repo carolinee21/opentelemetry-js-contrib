@@ -107,6 +107,9 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         );
       });
 
+      // Casting as any is necessary here due to multiple overloads on the Hapi.ext
+      // function, which requires supporting a variety of different parameters
+      // as extension inputs
       shimmer.wrap(newServer, 'ext', originalExtHandler => {
         return instrumentation._getServerExtPatch(
           instrumentation,
@@ -274,6 +277,9 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         );
       });
 
+      // Casting as any is necessary here due to multiple overloads on the Hapi.ext
+      // function, which requires supporting a variety of different parameters
+      // as extension inputs
       shimmer.wrap(server, 'ext', originalExtHandler => {
         return instrumentation._getServerExtPatch(
           instrumentation,
