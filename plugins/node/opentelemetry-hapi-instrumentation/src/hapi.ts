@@ -26,6 +26,8 @@ import {
   HapiPluginInput,
   RegisterFunction,
   PatchableExtMethod,
+  ServerExtInput,
+  ServerExtDirectInput,
 } from './types';
 import * as shimmer from 'shimmer';
 import {
@@ -33,6 +35,8 @@ import {
   getPluginName,
   isLifecycleExtType,
   getExtMetadata,
+  isDirectExtInput,
+  isPatchableExtMethod,
 } from './utils';
 
 /** Hapi instrumentation for OpenTelemetry */
@@ -93,19 +97,20 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
   private _getServerPatch(
     original: (options?: Hapi.ServerOptions) => Hapi.Server
   ) {
-    const instrumentation = this;
+    const instrumentation: HapiInstrumentation = this;
     return function server(this: Hapi.Server, opts?: Hapi.ServerOptions) {
       const newServer: Hapi.Server = original.apply(this, [opts]);
 
-      shimmer.wrap(newServer, 'route', original => {
+      shimmer.wrap(newServer, 'route', originalRouter => {
         return instrumentation._getServerRoutePatch.bind(instrumentation)(
-          original
+          originalRouter
         );
       });
 
-      shimmer.wrap(newServer, 'ext', original => {
-        return instrumentation._getServerExtPatch.bind(instrumentation)(
-          original
+      shimmer.wrap(newServer, 'ext', originalExtHandler => {
+        return instrumentation._getServerExtPatch(
+          instrumentation,
+          originalExtHandler
         );
       });
 
@@ -139,8 +144,8 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
       options?: Hapi.ServerRegisterOptions
     ) {
       if (Array.isArray(pluginInput)) {
-        for (let i = 0; i < pluginInput.length; i++) {
-          instrumentation._wrapRegisterHandler(pluginInput[i].plugin);
+        for (const pluginObj of pluginInput) {
+          instrumentation._wrapRegisterHandler(pluginObj.plugin);
         }
       } else {
         instrumentation._wrapRegisterHandler(pluginInput.plugin);
@@ -159,15 +164,15 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
    * @param {string} [pluginName] - if present, represents the name of the plugin responsible
    * for adding this server extension. Else, signifies that the extension was added directly
    */
-  private _getServerExtPatch(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    original: (...args: any) => void,
+  private _getServerExtPatch<T extends ServerExtInput>(
+    instrumentation: HapiInstrumentation,
+    original: T,
     pluginName?: string
-  ) {
-    const instrumentation = this;
+  ): T {
     this._logger.debug('Patching Hapi.Server ext function');
-    return function ext(
-      this: Hapi.Server,
+
+    return (function ext(
+      this: ThisParameterType<typeof original>,
       ...args: Parameters<typeof original>
     ) {
       if (Array.isArray(args[0])) {
@@ -175,9 +180,7 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
           | Hapi.ServerExtEventsObject[]
           | Hapi.ServerExtEventsRequestObject[] = args[0];
         for (let i = 0; i < eventsList.length; i++) {
-          const eventObj:
-            | Hapi.ServerExtEventsObject
-            | Hapi.ServerExtEventsRequestObject = eventsList[i];
+          const eventObj = eventsList[i];
           if (isLifecycleExtType(eventObj.type)) {
             const lifecycleEventObj = eventObj as Hapi.ServerExtEventsRequestObject;
             const handler = instrumentation._wrapExtMethods(
@@ -189,29 +192,36 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
             eventsList[i] = lifecycleEventObj;
           }
         }
-      } else if (args.length == 1) {
-        const eventObj:
-          | Hapi.ServerExtEventsObject
-          | Hapi.ServerExtEventsRequestObject = args[0];
+        // @ts-ignore
+        return original.apply(this, args);
+      } else if (isDirectExtInput(args)) {
+        const extInput: ServerExtDirectInput = args;
+        const method: PatchableExtMethod = extInput[1];
+
+        const handler = instrumentation._wrapExtMethods(
+          method,
+          extInput[0],
+          pluginName
+        );
+        // @ts-ignore
+        return original.apply(this, [extInput[0], handler, extInput[2]]);
+      } else {
+        const eventObj = args[0] as any;
         if (isLifecycleExtType(eventObj.type)) {
-          const lifecycleEventObj = eventObj as Hapi.ServerExtEventsRequestObject;
+          const method = eventObj.method as Hapi.Lifecycle.Method;
           const handler = instrumentation._wrapExtMethods(
-            lifecycleEventObj.method,
+            method,
             eventObj.type,
             pluginName
           );
-          lifecycleEventObj.method = handler;
-          args[0] = lifecycleEventObj;
+          eventObj.method = handler;
+          //@ts-ignore
+          return original.call(this, eventObj);
         }
-      } else {
-        const type = args[0];
-        if (isLifecycleExtType(type)) {
-          const method: PatchableExtMethod = args[1];
-          args[1] = instrumentation._wrapExtMethods(method, type, pluginName);
-        }
+        //@ts-ignore
+        return original.apply(this, args);
       }
-      return original.apply(this, args);
-    };
+    } as any) as T;
   }
 
   /**
@@ -270,8 +280,10 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
           pluginName
         );
       });
+
       shimmer.wrap(server, 'ext', original => {
-        return instrumentation._getServerExtPatch.bind(instrumentation)(
+        return instrumentation._getServerExtPatch(
+          instrumentation,
           original,
           pluginName
         );
@@ -292,14 +304,14 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
    * @param {string} [pluginName] - if present, represents the name of the plugin responsible
    * for adding this server route. Else, signifies that the route was added directly
    */
-  private _wrapExtMethods(
-    method: PatchableExtMethod | PatchableExtMethod[],
+  private _wrapExtMethods<T extends PatchableExtMethod | PatchableExtMethod[]>(
+    method: T,
     extPoint: Hapi.ServerRequestExtType,
     pluginName?: string
-  ): PatchableExtMethod | PatchableExtMethod[] {
+  ): T {
     const instrumentation = this;
 
-    if (Array.isArray(method)) {
+    if (method instanceof Array) {
       for (let i = 0; i < method.length; i++) {
         method[i] = instrumentation._wrapExtMethods(
           method[i],
@@ -307,28 +319,30 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         ) as PatchableExtMethod;
       }
       return method;
-    }
-    if (method[handlerPatched] === true) return method;
-    method[handlerPatched] = true;
+    } else if (isPatchableExtMethod(method)) {
+      if (method[handlerPatched] === true) return method;
+      method[handlerPatched] = true;
 
-    const newHandler: PatchableExtMethod = async function (
-      ...params: Parameters<Hapi.Lifecycle.Method>
-    ) {
-      if (instrumentation._tracer.getCurrentSpan() === undefined) {
-        return await method(...params);
-      }
-      const metadata = getExtMetadata(extPoint, pluginName);
-      const span = instrumentation._tracer.startSpan(metadata.name, {
-        attributes: metadata.attributes,
-      });
-      let res;
-      await instrumentation._tracer.withSpan(span, async () => {
-        res = await method(...params);
-      });
-      span.end();
-      return res;
-    };
-    return newHandler;
+      const newHandler: PatchableExtMethod = async function (
+        ...params: Parameters<Hapi.Lifecycle.Method>
+      ) {
+        if (instrumentation._tracer.getCurrentSpan() === undefined) {
+          return await method(...params);
+        }
+        const metadata = getExtMetadata(extPoint, pluginName);
+        const span = instrumentation._tracer.startSpan(metadata.name, {
+          attributes: metadata.attributes,
+        });
+        let res;
+        await instrumentation._tracer.withSpan(span, async () => {
+          res = await method(...params);
+        });
+        span.end();
+        return res;
+      };
+      return newHandler as T;
+    }
+    return method;
   }
 
   /**
