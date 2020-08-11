@@ -42,6 +42,13 @@ export const isLifecycleExtType = (
   );
 };
 
+export const isLifecycleExtEventObj = (
+  variableToCheck: unknown
+): variableToCheck is Hapi.ServerExtEventsRequestObject => {
+  const event = (variableToCheck as Hapi.ServerExtEventsRequestObject)?.type;
+  return event !== undefined && isLifecycleExtType(event);
+};
+
 export const isDirectExtInput = (
   variableToCheck: unknown
 ): variableToCheck is ServerExtDirectInput => {

@@ -48,26 +48,6 @@ export type PatchableExtMethod = Hapi.Lifecycle.Method & {
   [handlerPatched]?: boolean;
 };
 
-export type ServerExtInput =
-  | ((
-      this: Hapi.Server,
-      ...args: [
-        | Hapi.ServerExtEventsObject
-        | Hapi.ServerExtEventsObject[]
-        | Hapi.ServerExtEventsRequestObject
-        | Hapi.ServerExtEventsRequestObject[]
-      ]
-    ) => void)
-  | ((
-      this: Hapi.Server,
-      ...args: [
-        Hapi.ServerExtType,
-        Hapi.ServerExtPointFunction,
-        Hapi.ServerExtOptions | undefined
-      ]
-    ) => void)
-  | ((this: Hapi.Server, ...args: ServerExtDirectInput) => void);
-
 export type ServerExtDirectInput = [
   Hapi.ServerRequestExtType,
   Hapi.Lifecycle.Method,

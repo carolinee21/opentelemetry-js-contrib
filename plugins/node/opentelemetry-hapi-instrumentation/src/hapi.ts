@@ -26,7 +26,6 @@ import {
   HapiPluginInput,
   RegisterFunction,
   PatchableExtMethod,
-  ServerExtInput,
   ServerExtDirectInput,
 } from './types';
 import * as shimmer from 'shimmer';
@@ -34,6 +33,7 @@ import {
   getRouteMetadata,
   getPluginName,
   isLifecycleExtType,
+  isLifecycleExtEventObj,
   getExtMetadata,
   isDirectExtInput,
   isPatchableExtMethod,
@@ -110,7 +110,8 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
       shimmer.wrap(newServer, 'ext', originalExtHandler => {
         return instrumentation._getServerExtPatch(
           instrumentation,
-          originalExtHandler
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          originalExtHandler as any
         );
       });
 
@@ -164,14 +165,14 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
    * @param {string} [pluginName] - if present, represents the name of the plugin responsible
    * for adding this server extension. Else, signifies that the extension was added directly
    */
-  private _getServerExtPatch<T extends ServerExtInput>(
+  private _getServerExtPatch(
     instrumentation: HapiInstrumentation,
-    original: T,
+    original: (...args: unknown[]) => unknown,
     pluginName?: string
-  ): T {
+  ) {
     this._logger.debug('Patching Hapi.Server ext function');
 
-    return (function ext(
+    return function ext(
       this: ThisParameterType<typeof original>,
       ...args: Parameters<typeof original>
     ) {
@@ -192,36 +193,28 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
             eventsList[i] = lifecycleEventObj;
           }
         }
-        // @ts-ignore
         return original.apply(this, args);
       } else if (isDirectExtInput(args)) {
         const extInput: ServerExtDirectInput = args;
         const method: PatchableExtMethod = extInput[1];
-
         const handler = instrumentation._wrapExtMethods(
           method,
           extInput[0],
           pluginName
         );
-        // @ts-ignore
         return original.apply(this, [extInput[0], handler, extInput[2]]);
-      } else {
-        const eventObj = args[0] as any;
-        if (isLifecycleExtType(eventObj.type)) {
-          const method = eventObj.method as Hapi.Lifecycle.Method;
-          const handler = instrumentation._wrapExtMethods(
-            method,
-            eventObj.type,
-            pluginName
-          );
-          eventObj.method = handler;
-          //@ts-ignore
-          return original.call(this, eventObj);
-        }
-        //@ts-ignore
-        return original.apply(this, args);
+      } else if (isLifecycleExtEventObj(args[0])) {
+        const lifecycleEventObj = args[0];
+        const handler = instrumentation._wrapExtMethods(
+          lifecycleEventObj.method,
+          lifecycleEventObj.type,
+          pluginName
+        );
+        lifecycleEventObj.method = handler;
+        return original.call(this, lifecycleEventObj);
       }
-    } as any) as T;
+      return original.apply(this, args);
+    };
   }
 
   /**
@@ -281,10 +274,11 @@ export class HapiInstrumentation extends BasePlugin<typeof Hapi> {
         );
       });
 
-      shimmer.wrap(server, 'ext', original => {
+      shimmer.wrap(server, 'ext', originalExtHandler => {
         return instrumentation._getServerExtPatch(
           instrumentation,
-          original,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          originalExtHandler as any,
           pluginName
         );
       });
